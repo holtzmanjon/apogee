@@ -26,6 +26,9 @@ def get_ref(all) :
     return m1, ref, m2
 
 def plot(ax,a,r,y,xaxis='TEFF',zaxis='M_H',types=None,size=[40],xr=[3500,6000],zr=[-2,0.5],marker=['o'],yr=None,yt='TEFF') :
+    '''
+    Plots a series of points with different styles
+    '''
     for i in range(len(types)) :
         gd = np.where(r['class'] == types[i])[0]
         print types[i], len(gd), a[xaxis][gd],y[gd]
@@ -48,8 +51,12 @@ def main():
     n=2
     fig,ax=plt.subplots(n,figsize=(8,2+n))
     fig.subplots_adjust(hspace=0.001,wspace=0.001)
-    plot(ax[0],a,ref,a['TEFF']-ref['TEFF'],types=types,size=size,marker=marker,yr=[-490,490],yt='Teff')
-    plot(ax[1],a,ref,a['LOGG']-ref['LOGG'],types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='log g')
+    #plot(ax[0],a,ref,a['TEFF']-ref['TEFF'],types=types,size=size,marker=marker,yr=[-490,490],yt='Teff')
+    #plot(ax[1],a,ref,a['LOGG']-ref['LOGG'],types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='log g')
+    plots.plotp(ax[0],a['TEFF'],a['TEFF']-ref['TEFF'],ref['class'],xt='Teff',yt='$\Delta T_{eff}$,xr=[3500,6000],yr=[-490,490],
+                types=types,size=size,marker=marker)
+    plots.plotp(ax[0],a['TEFF'],a['LOGG']-ref['LOGG'],ref['class'],xt='Teff',yt='$\Delta log g$,xr=[3500,6000],yr=[-0.9,0.9],
+                types=types,size=size,marker=marker)
     ticklabels = ax[0].get_xticklabels() 
     plt.setp(ticklabels, visible=False)
     pdb.set_trace()
@@ -58,9 +65,15 @@ def main():
     n=3
     fig,ax=plt.subplots(n,figsize=(8,2+n))
     fig.subplots_adjust(hspace=0.001,wspace=0.001)
-    plot(ax[0],a,ref,a['C_FE']-(ref['C_H']-ref['FE_H']),types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='[C/Fe]')
-    plot(ax[1],a,ref,a['N_FE']-(ref['N_H']-ref['FE_H']),types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='[N/Fe]')
-    plot(ax[2],a,ref,a['O_FE']-(ref['O_H']-ref['FE_H']),types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='[O/Fe]')
+    #plot(ax[0],a,ref,a['C_FE']-(ref['C_H']-ref['FE_H']),types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='[C/Fe]')
+    #plot(ax[1],a,ref,a['N_FE']-(ref['N_H']-ref['FE_H']),types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='[N/Fe]')
+    #plot(ax[2],a,ref,a['O_FE']-(ref['O_H']-ref['FE_H']),types=types,size=size,marker=marker,yr=[-0.9,0.9],yt='[O/Fe]')
+    plots.plotp(ax[0],a['TEFF'],a['C_FE']-(ref['C_H']-ref['FE_H']),ref['class'],
+                xt='Teff',yt='$\Delta [C/Fe]$,xr=[3500,6000],yr=[-0.9,0.9],types=types,size=size,marker=marker)
+    plots.plotp(ax[1],a['TEFF'],a['N_FE']-(ref['N_H']-ref['FE_H']),ref['class'],
+                xt='Teff',yt='$\Delta [C/Fe]$,xr=[3500,6000],yr=[-0.9,0.9],types=types,size=size,marker=marker)
+    plots.plotp(ax[2],a['TEFF'],a['O_FE']-(ref['O_H']-ref['FE_H']),ref['class'],
+                xt='Teff',yt='$\Delta [C/Fe]$,xr=[3500,6000],yr=[-0.9,0.9],types=types,size=size,marker=marker)
     ticklabels = ax[0].get_xticklabels()
     for i in range(1,n-1) : ticklabels = ticklabels + ax[i].get_xticklabels() 
     plt.setp(ticklabels, visible=False)
