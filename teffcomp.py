@@ -61,7 +61,6 @@ def dr13() :
     ax[1,1].text(0.1,0.9,'SFD',transform=ax[1,1].transAxes)
 
     fig.savefig('dteff_mh.jpg')
-    pdb.set_trace()
 
     fig,ax=plots.multi(2,2,hspace=0.001,wspace=0.001)
     bins=np.arange(3500,5500,250)
