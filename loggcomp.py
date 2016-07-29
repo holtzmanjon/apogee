@@ -57,7 +57,7 @@ def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',ra
         plots.plotp(ax[2,1],allstar['PARAM'][i1[rc],1],allstar['PARAM'][i1[rc],1]-apokasc[logg][i2[rc]],xr=[0,5],yr=[-1,1],xt='log g',color='b')
         #plots.plotc(ax[3,1],allstar['FPARAM'][i1[rc],1],allstar['PARAM'][i1[rc],1]-allstar['FPARAM'][i1[rc],1],allstar['FPARAM'][i1[rc],3],xr=[0,5],yr=[-1,1],xt='seismic log g',zr=[-2,0.5])
 
-def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_cat_v3.6.0.fits') :
+def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_cat_v3.6.0.fits',firstgen=False) :
     '''
     Compare ASPCAP gravities in clusters to physical gravities
     '''
@@ -85,7 +85,7 @@ def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_
         ytext=0.85-itext%3*0.15
         if mass > 0 :
             # get cluster members
-            j=np.array(apselect.clustmember(allstar,cluster,raw=True))
+            j=np.array(apselect.clustmember(allstar,cluster,raw=True,firstgen=firstgen))
 
             # calculate physical gravities
             lum=10.**(-0.4*(allstar['H'][j]-ah+isochrones.bc(allstar['FPARAM'][j,0],filt='h',agerange=[age-0.05,age+0.05])-(5*np.log10(dist)-5)-4.74))*astropy.constants.L_sun.cgs.value
@@ -100,7 +100,7 @@ def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_
             out.write('{:<20s}{:8.3f}{:8.3f}{:8.3f}\n'.format(clust[i].name[0],clust[i].dist[0],clust[i].ebv[0],mass[0]))
 
             gd=np.where((allstar['PARAM'][j,3]>-9)&(allstar['PARAM'][j,1]>-9))[0]
-            plots.plotc(ax[1],allstar['PARAM'][j[gd],3]*0+mh,allstar['PARAM'][j[gd],1]-logg[gd],allstar['PARAM'][j[gd],0],xr=xr,yr=yr,zr=zr,xt='[M/H]',yt='ASPCAP-physical log g')
+            axim=plots.plotc(ax[1],allstar['PARAM'][j[gd],3]*0+mh,allstar['PARAM'][j[gd],1]-logg[gd],allstar['PARAM'][j[gd],0],xr=xr,yr=yr,zr=zr,xt='[M/H]',yt='ASPCAP-physical log g')
             ax[1].text(0.9,0.1,'calibrated',transform=ax[1].transAxes,ha='right')
 
             plots.plotp(ax[1],mh[0],np.median(allstar['PARAM'][j[gd],1]-logg[gd]),size=40)
@@ -112,6 +112,10 @@ def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_
             plots.plotp(ax[1],mh[0],np.median(allstar['PARAM'][j,1]-logg_phot),size=40,color='g')
             ax[1].text(mh[0],ytext,name[0],ha='center')
             itext+=1
+
+    # Now adding the colorbar
+    cbaxes = fig.add_axes([0.9, 0.1, 0.03, 0.8]) 
+    cb = plt.colorbar(axim, cax = cbaxes)  
     out.close()
 
 

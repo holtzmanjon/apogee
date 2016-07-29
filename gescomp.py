@@ -1,3 +1,5 @@
+# compares APOGEE and GES abundances for stars in common
+
 from sdss.apogee import apload
 from sdss.apogee import apselect
 from astropy.io import fits

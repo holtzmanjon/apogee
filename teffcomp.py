@@ -52,11 +52,11 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
     yr=[-400,300]
-    zr=[3500,6000]
+    zr=[3500,5500]
     bins=np.arange(-2.5,0.75,0.25)
     # diff color-coded by gravity as f([M/H])
     ghb=stars.ghb(allstar['J']-allstar['K'],allstar['FPARAM'][:,3],dwarf=dwarf)
-    plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff')
+    plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
     mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins)
     plots.plotp(ax,bins,mean,marker='o',size=40)
     ax.text(0.1,0.9,'EBV<0.02',transform=ax.transAxes)
@@ -64,6 +64,7 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     x=np.linspace(-3,1,200)
     pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],degree=2)
     plots.plotl(ax,x,pfit(x))
+    fig.savefig('teffcomp.png')
     print pfit
    
     # do some test 2D and 1D fits and plots 
