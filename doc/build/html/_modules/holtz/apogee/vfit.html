@@ -1,0 +1,460 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>holtz.apogee.vfit &mdash; apogee 0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="apogee 0.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">apogee 0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for holtz.apogee.vfit</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">ascii</span>
+<span class="kn">from</span> <span class="nn">astropy.modeling</span> <span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">fitting</span>
+<span class="kn">import</span> <span class="nn">astropy.constants</span> <span class="kn">as</span> <span class="nn">const</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pdb</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="kn">as</span> <span class="nn">mpl</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">holtz.tools</span> <span class="kn">import</span> <span class="n">fit</span>
+<span class="kn">from</span> <span class="nn">holtz.tools</span> <span class="kn">import</span> <span class="n">plots</span>
+
+<div class="viewcode-block" id="fit_vmicro"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.fit_vmicro">[docs]</a><span class="k">def</span> <span class="nf">fit_vmicro</span><span class="p">(</span><span class="nb">file</span><span class="p">,</span><span class="n">mhmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span><span class="n">loggmax</span><span class="o">=</span><span class="mf">3.8</span><span class="p">,</span><span class="n">vrange</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">reject</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Fit microturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file : file with calib structure</span>
+
+<span class="sd">    Keyword args :</span>
+<span class="sd">        degree : degree of fit (default=1)</span>
+<span class="sd">        mhmin : minimum [M/H] (default=-1)</span>
+<span class="sd">        loggmax : maximum log g (default=3.8)</span>
+<span class="sd">        vrange  : scaling range for vmacro plot, vrange[1] sets maximum good vmacro</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        fit1d, fit2d : 1D and 2D polynomial fits</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">teff</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">vmicro</span><span class="p">,</span> <span class="n">vmacro</span><span class="p">,</span> <span class="n">meanfib</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="nb">file</span><span class="p">)</span>
+    <span class="n">gd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">mh</span><span class="o">&gt;</span><span class="n">mhmin</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&lt;</span> <span class="n">loggmax</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mf">10.</span><span class="o">**</span><span class="n">vmicro</span> <span class="o">&lt;</span> <span class="n">vrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plots</span><span class="o">.</span><span class="n">multi</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">fit1d</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fit1d</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span> <span class="n">vmicro</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="n">degree</span><span class="p">,</span><span class="n">reject</span><span class="o">=</span><span class="n">reject</span><span class="p">)</span>
+    <span class="n">fit2d</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fit2d</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span> <span class="n">logg</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span> <span class="n">vmicro</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="n">degree</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">meanfib</span><span class="p">,</span> <span class="n">vmicro</span><span class="p">,</span> <span class="n">vrange</span><span class="p">,</span> <span class="n">fit1d</span><span class="p">,</span> <span class="n">fit2d</span><span class="p">,</span> <span class="n">vt</span><span class="o">=</span><span class="s1">&#39;vmicro&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fit1d</span><span class="p">,</span> <span class="n">fit2d</span>
+</div>
+<div class="viewcode-block" id="fit_vmacro"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.fit_vmacro">[docs]</a><span class="k">def</span> <span class="nf">fit_vmacro</span><span class="p">(</span><span class="nb">file</span><span class="p">,</span><span class="n">mhmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">loggmax</span><span class="o">=</span><span class="mf">3.8</span><span class="p">,</span> <span class="n">vrange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">15</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Fit macroturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file : file with calib structure</span>
+
+<span class="sd">    Keyword args :</span>
+<span class="sd">        degree : degree of fit (default=1)</span>
+<span class="sd">        mhmin : minimum [M/H] (default=-1)</span>
+<span class="sd">        loggmax : maximum log g (default=3.8)</span>
+<span class="sd">        vrange  : scaling range for vmacro plot, vrange[1] sets maximum good vmacro</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        fit1d, fit2d : 1D and 2D polynomial fits</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">teff</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">vmicro</span><span class="p">,</span> <span class="n">vmacro</span><span class="p">,</span> <span class="n">meanfib</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="nb">file</span><span class="p">)</span>
+    <span class="n">gd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">mh</span><span class="o">&gt;</span><span class="n">mhmin</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&lt;</span> <span class="n">loggmax</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mf">10.</span><span class="o">**</span><span class="n">vmacro</span> <span class="o">&lt;</span> <span class="n">vrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">gd</span><span class="o">=</span><span class="n">gd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">print</span> <span class="s1">&#39;len(gd)&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">gd</span><span class="p">)</span>
+    <span class="n">fit1d</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fit1d</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span> <span class="n">vmacro</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="n">degree</span><span class="p">)</span>
+    <span class="c1">#fit2d = fit.fit2d(teff[gd], logg[gd], vmacro[gd],degree=degree)</span>
+    <span class="n">fit2d</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">fit2d</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span> <span class="n">mh</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span> <span class="n">vmacro</span><span class="p">[</span><span class="n">gd</span><span class="p">],</span><span class="n">degree</span><span class="o">=</span><span class="n">degree</span><span class="p">)</span>
+    <span class="n">plot</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">meanfib</span><span class="p">,</span> <span class="n">vmacro</span><span class="p">,</span> <span class="n">vrange</span><span class="p">,</span> <span class="n">fit1d</span><span class="p">,</span> <span class="n">fit2d</span><span class="p">,</span> <span class="n">vt</span><span class="o">=</span><span class="s1">&#39;vmacro&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fit1d</span><span class="p">,</span> <span class="n">fit2d</span>
+</div>
+<div class="viewcode-block" id="litplot"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.litplot">[docs]</a><span class="k">def</span> <span class="nf">litplot</span><span class="p">(</span><span class="n">mass</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">feh</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="p">:</span> 
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Plots literature vmacro relations</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<span class="c1">#    parser = argparse.ArgumentParser()</span>
+<span class="c1">#    parser.add_argument(&quot;--mass&quot;,default=1.)</span>
+<span class="c1">#    parser.add_argument(&quot;--feh&quot;,default=0.)</span>
+<span class="c1">#    args=parser.parse_args()</span>
+<span class="c1">#    print &#39;Using mass: &#39;, args.mass</span>
+<span class="c1">#    mass=float(args.mass)</span>
+<span class="c1">#    feh=float(args.feh)</span>
+<span class="c1">#    print &#39;Using feh: &#39;, feh</span>
+<span class="c1">#    mass = 0.9</span>
+
+    <span class="c1"># setup plots</span>
+    <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;xtick.labelsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;ytick.labelsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">p</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+
+    <span class="n">p</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="n">plots</span><span class="o">.</span><span class="n">multi</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">lw</span><span class="o">=</span><span class="mi">0</span>
+
+    <span class="c1"># get isochrone data</span>
+    <span class="k">for</span> <span class="n">iso</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span><span class="o">-</span><span class="mf">2.</span><span class="p">]</span> <span class="p">:</span>
+        <span class="k">if</span> <span class="n">iso</span> <span class="o">&gt;=</span><span class="mi">0</span> <span class="p">:</span> 
+            <span class="n">c</span><span class="o">=</span><span class="s1">&#39;p&#39;</span> 
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="n">c</span><span class="o">=</span><span class="s1">&#39;m&#39;</span>
+        <span class="n">cfeh</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="o">+</span><span class="n">c</span><span class="o">+</span><span class="s1">&#39;{:02d}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">iso</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)))</span>
+        <span class="k">print</span> <span class="n">cfeh</span>
+        <span class="n">a</span><span class="o">=</span><span class="n">ascii</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;ISOCHRONE_DIR&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="n">cfeh</span><span class="o">+</span><span class="s1">&#39;.dat&#39;</span><span class="p">)</span>
+        <span class="n">age</span><span class="o">=</span><span class="n">a</span><span class="p">[</span><span class="s1">&#39;col2&#39;</span><span class="p">]</span>
+        <span class="n">j</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">age</span> <span class="o">==</span> <span class="mf">9.6</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">age</span> <span class="o">==</span> <span class="mf">9.0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">age</span> <span class="o">==</span> <span class="mf">10.0</span><span class="p">))</span>
+        <span class="n">logl</span><span class="o">=</span><span class="n">a</span><span class="p">[</span><span class="s1">&#39;col5&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+        <span class="n">iso_te</span><span class="o">=</span><span class="mf">10.</span><span class="o">**</span><span class="n">a</span><span class="p">[</span><span class="s1">&#39;col6&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+        <span class="n">iso_logg</span><span class="o">=</span><span class="n">a</span><span class="p">[</span><span class="s1">&#39;col7&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+        <span class="n">iso_feh</span><span class="o">=</span><span class="n">iso_logg</span><span class="o">*</span><span class="mf">0.</span><span class="o">+</span><span class="n">iso</span>
+
+        <span class="n">vm</span><span class="o">=</span><span class="n">vmacro_massarotti</span><span class="p">(</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">iso_feh</span><span class="p">)</span>
+        <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">vm</span><span class="p">,</span><span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">7500</span><span class="p">,</span><span class="mi">2500</span><span class="p">],</span><span class="n">yr</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span><span class="n">linewidth</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+        <span class="n">vm</span><span class="o">=</span><span class="n">vmacro_shetrone</span><span class="p">(</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">iso_feh</span><span class="p">)</span>
+        <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">vm</span><span class="p">,</span><span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">7500</span><span class="p">,</span><span class="mi">2500</span><span class="p">],</span><span class="n">yr</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span><span class="n">linewidth</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+        <span class="n">vm</span><span class="o">=</span><span class="n">vmacro_bergemann</span><span class="p">(</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">iso_feh</span><span class="p">)</span>
+        <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">vm</span><span class="p">,</span><span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">7500</span><span class="p">,</span><span class="mi">2500</span><span class="p">],</span><span class="n">yr</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span><span class="n">linewidth</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+        <span class="n">vm</span><span class="o">=</span><span class="n">vmacro_bergemann_new</span><span class="p">(</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">iso_feh</span><span class="p">)</span>
+        <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">iso_te</span><span class="p">,</span><span class="n">iso_logg</span><span class="p">,</span><span class="n">vm</span><span class="p">,</span><span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">7500</span><span class="p">,</span><span class="mi">2500</span><span class="p">],</span><span class="n">yr</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span><span class="n">linewidth</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+
+
+    <span class="c1"># setup grids for Teff and logg</span>
+    <span class="n">o</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="mi">61</span><span class="p">,</span><span class="mi">51</span><span class="p">])</span>
+    <span class="n">teff</span><span class="o">=</span><span class="n">o</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">51</span><span class="p">)</span><span class="o">*</span><span class="mf">100.</span><span class="p">)</span><span class="o">+</span><span class="mi">2500</span>
+    <span class="n">logg</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">o</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">61</span><span class="p">)</span><span class="o">*.</span><span class="mi">1</span><span class="p">))</span><span class="o">-</span><span class="mf">1.</span>
+    <span class="n">feh</span><span class="o">=</span><span class="n">o</span><span class="o">*</span><span class="mf">0.</span><span class="o">+</span><span class="n">feh</span>
+    <span class="c1"># L = 4*pi*R^2*sigma*Teff^4</span>
+    <span class="c1"># R^2 = L / (4 pi sigma Teff^4)</span>
+    <span class="c1"># log R^2 = log L - log (4*pi*sigma) - 4 logte</span>
+    <span class="c1"># logg = log G + log M - log L + log(4*pi*sigma) + 4 log te</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">sigma_sb</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">G</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">lsun</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">L_sun</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">msun</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">M_sun</span><span class="o">.</span><span class="n">cgs</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">m</span><span class="o">=</span><span class="n">mass</span><span class="o">*</span><span class="n">msun</span>
+    <span class="n">logl</span><span class="o">=</span><span class="mi">4</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">teff</span><span class="p">)</span><span class="o">-</span><span class="n">logg</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">lsun</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">4</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sigma</span><span class="o">*</span><span class="n">G</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+
+    <span class="n">a</span><span class="o">=</span><span class="n">vmacro_massarotti</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logl</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Massarotti vmacro&#39;</span><span class="p">)</span>
+    <span class="n">axim</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">7500</span><span class="p">,</span><span class="mf">2500.</span><span class="p">,</span><span class="mf">5.</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+    <span class="c1">#p.colorbar(axim)</span>
+
+    <span class="n">a</span><span class="o">=</span><span class="n">vmacro_shetrone</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logl</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Shetrone vmacro&#39;</span><span class="p">)</span>
+    <span class="n">axim</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">7500</span><span class="p">,</span><span class="mf">2500.</span><span class="p">,</span><span class="mf">5.</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+    <span class="c1">#p.colorbar(axim)</span>
+    
+    <span class="n">a</span><span class="o">=</span><span class="n">vmacro_bergemann</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Bergemann vmacro&#39;</span><span class="p">)</span>
+    <span class="n">axim</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mf">7500.</span><span class="p">,</span><span class="mf">2500.</span><span class="p">,</span><span class="mf">5.</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+    <span class="c1">#p.colorbar(axim)</span>
+
+    <span class="n">a</span><span class="o">=</span><span class="n">vmacro_bergemann_new</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Bergemann vmacro new&#39;</span><span class="p">)</span>
+    <span class="n">axim</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mf">7500.</span><span class="p">,</span><span class="mf">2500.</span><span class="p">,</span><span class="mf">5.</span><span class="p">,</span><span class="o">-</span><span class="mf">1.</span><span class="p">],</span><span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+    <span class="c1">#p.colorbar(axim)</span>
+
+    <span class="n">p</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;vmacro_&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">mass</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.jpg&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="vmacro_massarotti"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.vmacro_massarotti">[docs]</a><span class="k">def</span> <span class="nf">vmacro_massarotti</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logl</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns Massarotti vmacro as f(teff,logl,feh)</span>
+<span class="sd">   </span>
+<span class="sd">    Args:</span>
+<span class="sd">        teff : input Teff</span>
+<span class="sd">        logg : input logg</span>
+<span class="sd">        feh : input feh</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        vmacro</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">logte</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">teff</span><span class="p">)</span>
+    <span class="n">vm</span><span class="o">=</span><span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">logte</span><span class="o">+</span><span class="mf">0.25</span><span class="o">*</span><span class="n">logl</span><span class="o">-</span><span class="mf">12.67</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vm</span>
+</div>
+<div class="viewcode-block" id="vmacro_shetrone"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.vmacro_shetrone">[docs]</a><span class="k">def</span> <span class="nf">vmacro_shetrone</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logl</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns Shetrone vmacro as f(teff, logl, feh)</span>
+<span class="sd">   </span>
+<span class="sd">    Args:</span>
+<span class="sd">        teff : input Teff</span>
+<span class="sd">        logg : input logg</span>
+<span class="sd">        feh : input feh</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        vmacro</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">logte</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">teff</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="mf">1.85</span><span class="o">*</span><span class="n">logte</span><span class="o">+</span><span class="mf">0.22</span><span class="o">*</span><span class="n">logl</span><span class="o">-</span><span class="mf">6.49</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="vmacro_bergemann"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.vmacro_bergemann">[docs]</a><span class="k">def</span> <span class="nf">vmacro_bergemann</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns Bergemann vmacro as f(teff, logl, feh)</span>
+<span class="sd">   </span>
+<span class="sd">    Args:</span>
+<span class="sd">        teff : input Teff</span>
+<span class="sd">        logg : input logg</span>
+<span class="sd">        feh : input feh</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        vmacro</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">tref</span><span class="o">=</span><span class="mf">5250.</span> <span class="p">;</span> <span class="n">to</span> <span class="o">=</span> <span class="mf">5500.</span> <span class="p">;</span> <span class="n">go</span> <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">t</span><span class="o">=</span><span class="n">teff</span> <span class="p">;</span> <span class="n">g</span><span class="o">=</span><span class="n">logg</span>
+
+    <span class="c1"># set up output, which we will fill in pieces for different regimes</span>
+    <span class="n">vt</span><span class="o">=</span><span class="n">teff</span><span class="o">*</span><span class="mf">0.</span>
+
+    <span class="c1"># t &gt;= Tref and logg &gt;=3.5</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">teff</span><span class="o">&gt;</span><span class="n">tref</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&gt;=</span> <span class="mf">3.5</span><span class="p">))</span>
+    <span class="n">a1</span> <span class="o">=</span>  <span class="mf">1.15</span> <span class="p">;</span> <span class="n">b1</span> <span class="o">=</span>  <span class="mf">7.e-4</span><span class="p">;</span> <span class="n">c1</span> <span class="o">=</span> <span class="mf">1.2e-6</span>
+    <span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.13</span> <span class="p">;</span> <span class="n">c2</span> <span class="o">=</span>  <span class="mf">0.13</span>
+    <span class="n">b3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.37</span> <span class="p">;</span> <span class="n">c3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.07</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">a1</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span> <span class="o">+</span> <span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">c3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># t &lt; Tref and logg &gt;=3.5</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">teff</span><span class="o">&lt;</span><span class="n">tref</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&gt;=</span> <span class="mf">3.5</span><span class="p">))</span>
+    <span class="n">a1</span> <span class="o">=</span>  <span class="mf">1.15</span> <span class="p">;</span> <span class="n">b1</span> <span class="o">=</span>  <span class="mf">2.e-4</span><span class="p">;</span> <span class="n">c1</span> <span class="o">=</span> <span class="mf">3.95e-7</span>
+    <span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.13</span> <span class="p">;</span> <span class="n">c2</span> <span class="o">=</span>  <span class="mf">0.13</span>
+    <span class="n">b3</span> <span class="o">=</span>  <span class="mf">0.0</span>  <span class="p">;</span> <span class="n">c3</span> <span class="o">=</span>  <span class="mf">0.0</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">a1</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span> <span class="o">+</span> <span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">c3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># logg &lt; 3.5</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">logg</span> <span class="o">&lt;</span> <span class="mf">3.5</span><span class="p">)</span>
+    <span class="n">a1</span> <span class="o">=</span>  <span class="mf">1.15</span> <span class="p">;</span> <span class="n">b1</span> <span class="o">=</span>  <span class="mf">2.2e-5</span> <span class="p">;</span> <span class="n">c1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5e-7</span>
+    <span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.1</span> <span class="p">;</span> <span class="n">c2</span> <span class="o">=</span>  <span class="mf">0.04</span> 
+    <span class="n">b3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.37</span>  <span class="p">;</span> <span class="n">c3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.07</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">a1</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span> <span class="o">+</span> <span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">c3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vt</span>
+</div>
+<div class="viewcode-block" id="vmacro_bergemann_new"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.vmacro_bergemann_new">[docs]</a><span class="k">def</span> <span class="nf">vmacro_bergemann_new</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns newer Bergemann vmacro as f(teff, logl, feh)</span>
+<span class="sd">   </span>
+<span class="sd">    Args:</span>
+<span class="sd">        teff : input Teff</span>
+<span class="sd">        logg : input logg</span>
+<span class="sd">        feh : input feh</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        vmacro</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">t0</span>  <span class="o">=</span> <span class="mi">5500</span>
+    <span class="n">g0</span>  <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">vt</span><span class="o">=</span><span class="n">teff</span><span class="o">*</span><span class="mf">0.</span>
+
+    <span class="c1"># MS and RGB, Teff &gt;=5250</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">teff</span><span class="o">&gt;</span><span class="mf">5250.</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&gt;=</span> <span class="mf">3.5</span><span class="p">))</span>
+    <span class="n">Rxa</span> <span class="o">=</span> <span class="p">(</span> <span class="mf">1.15</span> <span class="o">+</span> <span class="mf">7e-4</span><span class="o">*</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.2e-6</span><span class="o">*</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> 
+            <span class="o">-</span> <span class="mf">0.13</span><span class="o">*</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">g0</span><span class="p">)</span> <span class="o">+</span>     <span class="mf">0.13</span><span class="o">*</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">g0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> 
+            <span class="o">-</span>    <span class="mf">0.37</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>     <span class="o">-</span>    <span class="mf">0.07</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>   
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">Rxa</span>
+
+    <span class="c1"># MS, Teff &lt;=5250</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">teff</span><span class="o">&lt;</span><span class="mf">5250.</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&gt;=</span> <span class="mf">3.5</span><span class="p">))</span>
+    <span class="n">Rxa</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.15</span> <span class="o">+</span> <span class="mf">2e-4</span><span class="o">*</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">3.95e-7</span><span class="o">*</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> 
+            <span class="o">-</span> <span class="mf">0.13</span><span class="o">*</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">g0</span><span class="p">)</span> <span class="o">+</span>     <span class="mf">0.13</span><span class="o">*</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">g0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">Rxa</span>
+
+    <span class="c1"># RGB/AGB</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">logg</span> <span class="o">&lt;</span> <span class="mf">3.5</span><span class="p">)</span>
+    <span class="n">Rxa</span> <span class="o">=</span> <span class="p">(</span> <span class="mf">1.15</span> <span class="o">+</span> <span class="mf">2.2e-5</span><span class="o">*</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5e-7</span><span class="o">*</span><span class="p">(</span><span class="n">teff</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> 
+            <span class="o">-</span>    <span class="mf">0.1</span><span class="o">*</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">g0</span><span class="p">)</span> <span class="o">+</span>   <span class="mf">0.04</span><span class="o">*</span><span class="p">(</span><span class="n">logg</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">g0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>  
+            <span class="o">-</span>    <span class="mf">0.37</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>     <span class="o">-</span>    <span class="mf">0.07</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="o">*</span><span class="n">Rxa</span>
+    <span class="k">return</span> <span class="n">vt</span>
+</div>
+<div class="viewcode-block" id="vmicro_bergemann"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.vmicro_bergemann">[docs]</a><span class="k">def</span> <span class="nf">vmicro_bergemann</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="n">feh</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns Bergemann vmicro as f(teff, logl, feh)</span>
+<span class="sd">   </span>
+<span class="sd">    Args:</span>
+<span class="sd">        teff : input Teff</span>
+<span class="sd">        logg : input logg</span>
+<span class="sd">        feh : input feh</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        vmicro</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># reference variables</span>
+    <span class="n">tref</span><span class="o">=</span><span class="mf">5500.</span> <span class="p">;</span> <span class="n">to</span> <span class="o">=</span> <span class="mf">5500.</span> <span class="p">;</span> <span class="n">go</span> <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">t</span><span class="o">=</span><span class="n">teff</span> <span class="p">;</span> <span class="n">g</span><span class="o">=</span><span class="n">logg</span>
+
+    <span class="c1"># set up output variable, which we will fill in pieces</span>
+    <span class="n">vt</span><span class="o">=</span><span class="n">teff</span><span class="o">*</span><span class="mf">0.</span>
+
+    <span class="c1"># t &gt;= Tref and logg &gt;=3.5</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">teff</span><span class="o">&gt;=</span><span class="n">tref</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&gt;=</span> <span class="mf">3.5</span><span class="p">))</span>
+    <span class="n">a1</span> <span class="o">=</span>  <span class="mf">1.1</span> <span class="p">;</span> <span class="n">b1</span> <span class="o">=</span>  <span class="mf">2.e-4</span><span class="p">;</span> <span class="n">c1</span> <span class="o">=</span> <span class="mf">7.95e-7</span>
+    <span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.13</span> <span class="p">;</span> <span class="n">c2</span> <span class="o">=</span>  <span class="mf">0.13</span>
+    <span class="n">b3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.27</span> <span class="p">;</span> <span class="n">c3</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.1</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span> <span class="o">+</span> <span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">c3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># t &lt; Tref and logg &gt;=3.5</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">teff</span><span class="o">&lt;</span><span class="n">tref</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">logg</span> <span class="o">&gt;=</span> <span class="mf">3.5</span><span class="p">))</span>
+    <span class="n">a1</span> <span class="o">=</span>  <span class="mf">1.1</span> <span class="p">;</span> <span class="n">b1</span> <span class="o">=</span>  <span class="mf">2.e-4</span><span class="p">;</span> <span class="n">c1</span> <span class="o">=</span> <span class="mf">3.95e-7</span>
+    <span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.13</span> <span class="p">;</span> <span class="n">c2</span> <span class="o">=</span>  <span class="mf">0.13</span>
+    <span class="n">b3</span> <span class="o">=</span>  <span class="o">-</span><span class="mf">0.6</span>  <span class="p">;</span> <span class="n">c3</span> <span class="o">=</span>  <span class="o">-</span><span class="mf">0.2</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span> <span class="o">+</span> <span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">c3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># logg &lt; 3.5</span>
+    <span class="n">j</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">logg</span> <span class="o">&lt;</span> <span class="mf">3.5</span><span class="p">)</span>
+    <span class="n">a1</span> <span class="o">=</span>  <span class="mf">1.3</span> <span class="p">;</span> <span class="n">b1</span> <span class="o">=</span>  <span class="mf">2.2e-5</span> <span class="p">;</span> <span class="n">c1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5e-7</span>
+    <span class="n">b2</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.1</span> <span class="p">;</span> <span class="n">c2</span> <span class="o">=</span>  <span class="mf">0.04</span> 
+    <span class="n">b3</span> <span class="o">=</span>  <span class="mf">0.0</span>  <span class="p">;</span> <span class="n">c3</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">vt</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span> <span class="o">+</span> <span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">to</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span> <span class="o">+</span> <span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">-</span><span class="n">go</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">c3</span><span class="o">*</span><span class="n">feh</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">vt</span>
+
+
+<span class="c1"># fits</span>
+</div>
+<div class="viewcode-block" id="read"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.read">[docs]</a><span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="nb">file</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Reads an allStar file and parses and returns teff, logg, mh, vmicro, vmacro, meanfib</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file : name of file to read</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        teff, logg, mh, vmicro, vmacro, meanfib </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="nb">file</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">vmicro</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;fparam&#39;</span><span class="p">][:,</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">vmacro</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;fparam&#39;</span><span class="p">][:,</span><span class="mi">7</span><span class="p">]</span>
+    <span class="n">teff</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;fparam&#39;</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">logg</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;fparam&#39;</span><span class="p">][:,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">mh</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;fparam&#39;</span><span class="p">][:,</span><span class="mi">3</span><span class="p">]</span>
+    <span class="k">try</span> <span class="p">:</span>
+       <span class="n">meanfib</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;meanfib&#39;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">:</span>
+       <span class="n">meanfib</span> <span class="o">=</span> <span class="mf">0.</span><span class="o">*</span><span class="n">vmicro</span>
+    <span class="k">return</span> <span class="n">teff</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">vmicro</span><span class="p">,</span> <span class="n">vmacro</span><span class="p">,</span> <span class="n">meanfib</span>
+
+</div>
+<div class="viewcode-block" id="plot"><a class="viewcode-back" href="../../../vfit.html#holtz.apogee.vfit.plot">[docs]</a><span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">meanfib</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">vr</span><span class="p">,</span> <span class="n">fit1d</span><span class="p">,</span> <span class="n">fit2d</span><span class="p">,</span> 
+         <span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">5500</span><span class="p">,</span><span class="mi">3500</span><span class="p">],</span> <span class="n">yr</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">vt</span><span class="o">=</span><span class="s1">&#39;vmicro&#39;</span><span class="p">)</span> <span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    auxiliary plotting routine for vmicro, vmacro plots</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+    <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="n">yr</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span><span class="n">yr</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="mi">200j</span><span class="p">,</span> <span class="n">xr</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span><span class="n">xr</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="mi">200j</span><span class="p">]</span>
+    <span class="n">ax</span><span class="o">=</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="mf">10.</span><span class="o">**</span><span class="n">v</span><span class="p">,</span><span class="n">xr</span><span class="o">=</span><span class="n">xr</span><span class="p">,</span><span class="n">yr</span><span class="o">=</span><span class="n">yr</span><span class="p">,</span><span class="n">zr</span><span class="o">=</span><span class="n">vr</span><span class="p">,</span>
+                <span class="n">xt</span><span class="o">=</span><span class="s1">&#39;Teff&#39;</span><span class="p">,</span><span class="n">yt</span><span class="o">=</span><span class="s1">&#39;log g&#39;</span><span class="p">,</span><span class="n">zt</span><span class="o">=</span><span class="n">vt</span><span class="p">,</span><span class="n">colorbar</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="mf">10.</span><span class="o">**</span><span class="n">fit2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">),</span><span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="n">xr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">xr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">yr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">yr</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
+                <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="n">vr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">=</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">,</span><span class="mf">10.</span><span class="o">**</span><span class="n">v</span><span class="p">,</span><span class="n">xr</span><span class="o">=</span><span class="n">xr</span><span class="p">,</span><span class="n">yr</span><span class="o">=</span><span class="n">yr</span><span class="p">,</span><span class="n">zr</span><span class="o">=</span><span class="n">vr</span><span class="p">,</span>
+                <span class="n">xt</span><span class="o">=</span><span class="s1">&#39;Teff&#39;</span><span class="p">,</span><span class="n">yt</span><span class="o">=</span><span class="s1">&#39;log g&#39;</span><span class="p">,</span><span class="n">zt</span><span class="o">=</span><span class="n">vt</span><span class="p">,</span><span class="n">colorbar</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="mf">10.</span><span class="o">**</span><span class="n">fit1d</span><span class="p">(</span><span class="n">y</span><span class="p">),</span><span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="n">xr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">xr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">yr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">yr</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
+              <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="n">vr</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">=</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">fit2d</span><span class="p">(</span><span class="n">teff</span><span class="p">,</span><span class="n">logg</span><span class="p">),</span> <span class="n">mh</span><span class="p">,</span> <span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="n">yr</span><span class="o">=</span><span class="n">vr</span><span class="p">,</span> <span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">colorbar</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">xt</span><span class="o">=</span><span class="s1">&#39;log g&#39;</span><span class="p">,</span> <span class="n">yt</span><span class="o">=</span><span class="n">vt</span><span class="p">,</span> <span class="n">zt</span><span class="o">=</span><span class="s1">&#39;[M/H]&#39;</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">=</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">fit1d</span><span class="p">(</span><span class="n">logg</span><span class="p">),</span> <span class="n">mh</span><span class="p">,</span> <span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="n">yr</span><span class="o">=</span><span class="n">vr</span><span class="p">,</span> <span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">colorbar</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">xt</span><span class="o">=</span><span class="s1">&#39;log g&#39;</span><span class="p">,</span> <span class="n">yt</span><span class="o">=</span><span class="n">vt</span><span class="p">,</span> <span class="n">zt</span><span class="o">=</span><span class="s1">&#39;[M/H]&#39;</span><span class="p">)</span>
+    <span class="n">x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mf">0.01</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotl</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span><span class="n">x</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="p">(</span><span class="mf">0.226</span> <span class="o">-</span> <span class="mf">0.0228</span> <span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="mf">0.0297</span> <span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mf">0.0113</span> <span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span>
+
+    <span class="n">ax</span><span class="o">=</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">v</span><span class="p">,</span> <span class="n">mh</span><span class="p">,</span> <span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="n">yr</span><span class="o">=</span><span class="n">vr</span><span class="p">,</span> <span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">colorbar</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">xt</span><span class="o">=</span><span class="s1">&#39;log g&#39;</span><span class="p">,</span> <span class="n">yt</span><span class="o">=</span><span class="n">vt</span><span class="p">,</span> <span class="n">zt</span><span class="o">=</span><span class="s1">&#39;[M/H]&#39;</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">=</span><span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">6</span><span class="p">)</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plotc</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">logg</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">v</span><span class="p">,</span> <span class="n">meanfib</span><span class="p">,</span> <span class="n">xr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="n">yr</span><span class="o">=</span><span class="n">vr</span><span class="p">,</span> <span class="n">zr</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">300</span><span class="p">],</span>
+                <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">colorbar</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">xt</span><span class="o">=</span><span class="s1">&#39;log g&#39;</span><span class="p">,</span> <span class="n">yt</span><span class="o">=</span><span class="n">vt</span><span class="p">,</span> <span class="n">zt</span><span class="o">=</span><span class="s1">&#39;&lt;fiber&gt;&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">apogee 0.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, Jon Holtzman.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>
