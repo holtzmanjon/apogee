@@ -1,9 +1,0 @@
-vfit module:
-***********
-
-Routines for looking at relations of vmicro or vmacro as a function of other parameters
-
-.. automodule:: holtz.apogee.vfit
-   :members:
-   :member-order: bysource
-

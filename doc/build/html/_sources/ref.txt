@@ -1,7 +1,0 @@
-ref module:
-***********
-
-.. automodule:: holtz.apogee.ref
-   :members:
-   :member-order: bysource
-

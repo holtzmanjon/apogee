@@ -1,7 +1,0 @@
-gescomp module:
-***********
-
-.. automodule:: holtz.apogee.gescomp
-   :members:
-   :member-order: bysource
-

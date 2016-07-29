@@ -1,7 +1,0 @@
-elem module:
-***********
-
-.. automodule:: holtz.apogee.elem
-   :members:
-   :member-order: bysource
-

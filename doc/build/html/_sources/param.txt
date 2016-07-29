@@ -1,7 +1,0 @@
-param module:
-***********
-
-.. automodule:: holtz.apogee.param
-   :members:
-   :member-order: bysource
-

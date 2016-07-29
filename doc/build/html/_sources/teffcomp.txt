@@ -1,9 +1,0 @@
-teffcomp module:
-***********
-
-Routines for looking at ASPCAP Teff vs other effective temperature estimates, e.g. photometric Teffs for different samples
-
-.. automodule:: holtz.apogee.teffcomp
-   :members:
-   :member-order: bysource
-

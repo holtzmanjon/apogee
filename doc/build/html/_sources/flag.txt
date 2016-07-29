@@ -1,7 +1,0 @@
-flag module:
-***********
-
-.. automodule:: holtz.apogee.flag
-   :members:
-   :member-order: bysource
-
