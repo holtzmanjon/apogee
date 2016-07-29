@@ -12,8 +12,10 @@ import pdb
 def get_ref(all) :
     """
     Given allStar structure, match by ID to reference catalog
+
     Args :
            all : allStar structure 
+
     Returns:
            calindex :  list of indices in cal that have Kepler matches
            ref :       Kepler structure
@@ -39,6 +41,9 @@ def plot(ax,a,r,y,xaxis='TEFF',zaxis='M_H',types=None,size=[40],xr=[3500,6000],z
 
 
 def main():
+    '''
+    Main routine for making a bunch of plots
+    '''
     apload.dr13()
     a=apload.allStar()[1].data
     m1,ref,m2 = get_ref(a)

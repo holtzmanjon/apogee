@@ -1,0 +1,9 @@
+loggcomp module:
+***********
+
+Routines for looking at comparison of ASPCAP log g with asteroseismic and/or physical gravity estimates
+
+.. automodule:: holtz.apogee.loggcomp
+   :members:
+   :member-order: bysource
+

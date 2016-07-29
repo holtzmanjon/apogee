@@ -1,10 +1,11 @@
+# makes a bunch of [X/Fe] vs [Fe/H] plots for use with calibration
+
 import matplotlib.pyplot as plt
 import numpy as np
 from sdss.apogee import apload
 from sdss.apogee import apselect
-from holtz import plots
-from holtz import html
-#import galmodel
+from holtz.tools import plots
+from holtz.tools import html
 import pdb
 from astropy.io import fits
 from astropy.io import ascii
@@ -15,6 +16,9 @@ reload(apselect)
 reload(plots)
 
 def read(file='allStar-testcal.fits') :
+    '''
+    Read allStar file
+    '''
     apload.dr13()
     #a=apload.allStar()[1].data
     c=apload.allStar()[3].data
@@ -30,10 +34,16 @@ def read(file='allStar-testcal.fits') :
     return a, elem, elemtoh
 
 def arctabun(el) :
+    '''
+    Define Arcturus abundances, and return requested abundance
+    '''
     abun = { "C" : 0.090000, "CI" : 0.09, "N" : 0.400000, "O" : 0.480000, "Na" : 0.210000, "Mg" : 0.370000, "Al" : 0.400000, "Si" : 0.330000, "P" : 0.070000, "S" : 0.350000, "K" : 0.200000, "Ca" : 0.090000, "Sc" : 0.070000, "Ti" : 0.250000, "TiII" : 0.25, "V" : 0.160000, "Cr" : -0.050000, "Mn" : -0.120000, "Fe" : -0.000000, "Co" : 0.040000, "Ni" : 0.030000, "Cu" : -0.050000, "Ge" : 0.000000, "Rb" : 0.000000, "Y" : 0.000000, "Ce" : -0.190000, "Nd" : 0.130000, "M" : 0., "alpha" : 0.3}
     return(abun[el]) 
 
 def optabun(el) :
+    '''
+    ??? define abundance offsets from some optical analysis ???
+    '''
     abun = {"Na" : -0.15, "Mg" :  0.06, "Al" :  0.04, "Si" : -0.21, "Ca" :  0.11, "Ti" : -0.14, "TiII" : 0.08, "V" : -0.15, "Cr" : -0.04, "Mn" : -0.36, "Fe" : 0.06, "Co" : -0.26}
     try :
         return(abun[el]) 
@@ -42,13 +52,18 @@ def optabun(el) :
 
 
 def refabun(el,dwarf=False) :
+   '''
+   Return reference abundance: 0 if giant,  Arcturus if not?
+   '''
    if dwarf :
        return 0.
    else :
        return arctabun(el)
 
 def plot(a,elem,etoh,dwarf=False,suffix='',gcal=None,dcal=None,glon=None,glat=None,res=None,usemh=False,sn=[200,1000]) :
-
+    '''
+    Make a bunch of plots
+    '''
     # selection
     #dt=a['FPARAM'][:,0]-(4468+(a['FPARAM'][:,1]-2.5)/0.0018 - 382.5*a['FPARAM'][:,3])
     #gd=apselect.select(a[zone],badval='STAR_BAD',logg=[-1,3.5],sn=[200,1000],teff=[4000,4800])
@@ -378,6 +393,51 @@ def main() :
     #a,e,etoh = read()
     #plot(a,e,etoh)
     #plot(a,e,etoh,dwarf=True)
+
+def globalscatter(allstar,elems) :
+    ''' 
+    Compute scatter in clusters
+    '''
+    clust=apselect.clustdata()
+    gd=apselect.select(allstar,badval='STAR_BAD')
+    members=[]
+    print 'selecting'
+    clusts = ['N2420', 'M67', 'N188', 'N7789', 'N6819', 'N6791']
+    for cluster in clusts :
+        j=np.array(apselect.clustmember(allstar[gd],cluster,raw=True))
+        print cluster,len(j)
+        members.append(j)
+    pdb.set_trace()
+
+    iel=0
+    for el in np.append(elems,['M','alpha']) :
+        iclust=0
+        all=np.array([])
+        for cluster in clusts :
+            i=np.where(clust.name == cluster)
+            mh=clust[i].mh
+            name=clust[i].name
+            # get cluster members
+            j=members[iclust]
+            if len(j) > 0 :
+                if el.strip() == 'Fe' :
+                  abun=allstar['X_H'][gd[j],iel]
+                  ok=np.where(((allstar['ELEMFLAG'][gd[j],iel] & 255) == 0) & (allstar['X_H_ERR'][gd[j],iel] < 0.2))[0]
+                elif el.strip() == 'M' :
+                  abun=allstar['M_H'][gd[j]]
+                  ok=np.where(((allstar['PARAMFLAG'][gd[j],3] & 255) == 0) & (allstar['M_H_ERR'][gd[j]] < 0.2))[0]
+                elif el.strip() == 'alpha' :
+                  abun=allstar['ALPHA_M'][gd[j]]
+                  ok=np.where(((allstar['PARAMFLAG'][gd[j],6] & 255) == 0) & (allstar['ALPHA_M_ERR'][gd[j]] < 0.2))[0]
+                else :
+                  abun=allstar['X_M'][gd[j],iel]
+                  ok=np.where(((allstar['ELEMFLAG'][gd[j],iel] & 255) == 0) & (allstar['X_M_ERR'][gd[j],iel] < 0.2))[0]
+                if len(ok) > 3 :
+                    all=np.append(all,abun[ok]-abun[ok].mean())
+            iclust+=1
+        print el, all.mean(), all.std(), len(all)
+        iel+=1
+
 
 if __name__ == '__main__' :
     main()

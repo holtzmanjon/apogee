@@ -2,19 +2,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sdss.apogee import apload
 from sdss.apogee import apselect
-from holtz import plots
-from holtz import html
-#import galmodel
+from holtz.tools import plots
+from holtz.tools import html
 import pdb
 from astropy.io import fits
 from astropy.io import ascii
-import esutil
 
 reload(apselect)
 #reload(galmodel)
 reload(plots)
 
 def read(file=None) :
+    '''
+    Read allStar file
+
+    Returns:
+       allstar structure, elem, elemtoh
+    '''
     apload.dr13()
     c=apload.allStar()[3].data
     if file is None :
@@ -27,7 +31,16 @@ def read(file=None) :
     return a, elem, elemtoh
 
 def plot(a,sn=[0,1000]) :
+    '''
+    plots a bunch of parameter-related things!
 
+    Args:
+        a  : allstar Structure
+
+    Keyword args:
+        sn=[snlow,snhigh] : range of S/N to accept (default=[0,1000])
+
+    '''
     gd=apselect.select(a,badval='STAR_BAD',sn=sn,raw=True)
     gdgiant=apselect.select(a,badval='STAR_BAD',sn=sn,raw=True,giants=True)
 
@@ -52,6 +65,7 @@ def plot(a,sn=[0,1000]) :
     for iplot in range(0,5) :
           size = 8
           if iplot == 0 :
+              # log g vs Teff
               x = a['PARAM'][gd,0]
               xr = [8000,2500]
               xr = [4000,3500]
@@ -66,6 +80,7 @@ def plot(a,sn=[0,1000]) :
               xtit.append('calibrated ')
               size = 12
           elif iplot == 1 :
+              # log g vs Teff raw
               x = a['FPARAM'][gd,0]
               xr = [8000,2500]
               xt= 'Teff (raw)'
@@ -78,6 +93,7 @@ def plot(a,sn=[0,1000]) :
               size=1
               xtit.append('raw')
           elif iplot == 2 :
+              # chi2 vs Teff
               x = a['PARAM'][gd,0]
               xr = [8000,2500]
               xt= 'Teff'
@@ -85,11 +101,12 @@ def plot(a,sn=[0,1000]) :
               yr=[0,50.]
               yt = 'ASPCAP_CHI2'
               #z = a['ELEM'][gd,ifeh]
-              z = a['PARAM'][gd,3]
+              z = a['FPARAM'][gd,3]
               zr = [-2.5,0.5]
               zt='[M/H]'
               xtit.append('Chi^2')
           elif iplot == 3 :
+              # vmicro vs log g
               x = a['FPARAM'][gd,1]
               xr = [-1,5]
               xt= 'log g'
@@ -101,12 +118,13 @@ def plot(a,sn=[0,1000]) :
               zt='[M/H]'
               xtit.append('vmicro')
           elif iplot == 4 :
+              # vrot/vmacro vs log g
               x = a['FPARAM'][gd,1]
               xr = [-1,5]
               xt= 'log g'
               y = 10.**a['PARAM'][gd,7]
               yr=[0.,8]
-              yt = 'vmicro'
+              yt = 'vmacro/rotation'
               z = a['PARAM'][gd,3]
               zr = [-2.5,0.5]
               zt='[M/H]'
@@ -141,6 +159,7 @@ def plot(a,sn=[0,1000]) :
     xtit= []
     for iplot in range(5,10) :
           if iplot == 5 :
+              # Delta T vs Teff by class
               x = a['FPARAM'][gdgiant,0]
               xr = [3000,4500]
               xt= 'Teff'
@@ -155,6 +174,7 @@ def plot(a,sn=[0,1000]) :
               zt='[M/H]'
               xtit.append('Delta Teff')
           elif iplot == 6 :
+              # Delta logg vs Teff by class
               x = a['FPARAM'][gdgiant,0]
               xr = [3000,4500]
               xt= 'Teff'
@@ -168,6 +188,7 @@ def plot(a,sn=[0,1000]) :
               zt='[M/H]'
               xtit.append('Delta logg')
           elif iplot == 7 :
+              # Delta [M/H] vs Teff by class
               x = a['FPARAM'][gdgiant,0]
               xr = [3000,4500]
               xt= 'Teff'
@@ -181,6 +202,7 @@ def plot(a,sn=[0,1000]) :
               zt='[M/H]'
               xtit.append('Delta [M/H]')
           elif iplot == 8 :
+              # Delta [alpha/M] vs Teff by class
               x = a['FPARAM'][gdgiant,0]
               xr = [3000,4500]
               xt= 'Teff'
@@ -194,6 +216,7 @@ def plot(a,sn=[0,1000]) :
               zt='[M/H]'
               xtit.append('Delta [alpha/H]')
           elif iplot == 9 :
+              # Delta logg vs Teff by class
               x = a['FPARAM'][gdgiant,0]
               xr = [3000,4500]
               xt= 'Teff'
@@ -252,8 +275,26 @@ def plot(a,sn=[0,1000]) :
    
     html.htmltab(files,ytitle=ytit,file='param/'+'param.html',xtitle=xtit)
 
+def alpha(a) :
+    '''
+    Plot difference between [alpha/M] and individual alpha abundances
+    '''
+    gd=apselect.select(a,badval='STAR_BAD')
+
+    fig,ax=plots.multi(1,6,hspace=0.001)
+
+    plots.plotc(ax[0],a['TEFF'][gd],a['O_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[O/FE]-[alpha/M]')
+    plots.plotc(ax[1],a['TEFF'][gd],a['MG_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[Mg/FE]-[alpha/M]')
+    plots.plotc(ax[2],a['TEFF'][gd],a['SI_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[Si/FE]-[alpha/M]')
+    plots.plotc(ax[3],a['TEFF'][gd],a['S_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[S/FE]-[alpha/M]')
+    plots.plotc(ax[4],a['TEFF'][gd],a['CA_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[Ca/FE]-[alpha/M]')
+    plots.plotc(ax[5],a['TEFF'][gd],a['TI_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[Ti/FE]-[alpha/M]',xt='Teff')
+    
+
 def main() :
-    ''' Make series of plots and web pages for each calibration "type" '''    
+    ''' 
+    Make series of plots and web pages for each calibration "type" 
+    '''    
 
     a,e,etoh = read('allStar-l30e.2.fits')
     #a,e,etoh = read('allStar-testcal.fits')

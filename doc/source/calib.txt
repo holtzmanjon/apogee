@@ -1,0 +1,7 @@
+calib module:
+***********
+
+.. automodule:: holtz.apogee.calib
+   :members:
+   :member-order: bysource
+
