@@ -6,6 +6,7 @@ from sdss.apogee import apload
 from sdss.apogee import apselect
 from holtz.tools import plots
 from holtz.tools import html
+from holtz.tools import fit
 import pdb
 from astropy.io import fits
 from astropy.io import ascii
@@ -437,6 +438,95 @@ def globalscatter(allstar,elems) :
             iclust+=1
         print el, all.mean(), all.std(), len(all)
         iel+=1
+
+def getabun(data,elems,el,xh=False) :
+    '''
+    Return the abundance of the requested element, given data array, elem array, element
+    '''
+    print 'getabun: ', el.strip()
+    if el.strip() == 'M' :
+        ok=np.where(((data['PARAMFLAG'][:,3] & 255) == 0) & (data['FPARAM_COV'][:,3,3] < 0.2))[0]
+        abun = data['FPARAM'][:,3]
+    elif el.strip() == 'alpha' :
+        ok=np.where(((data['PARAMFLAG'][:,6] & 255) == 0) & (data['FPARAM_COV'][:,6,6] < 0.2))[0]
+        abun = data['FPARAM'][:,6]
+        if xh : abun+=data['FPARAM'][:,3]
+    else :
+        iel=np.where(np.core.defchararray.strip(elems['ELEM_SYMBOL'][0]) == el.strip())[0][0]
+        ok=np.where(((data['ELEMFLAG'][:,iel] & 255) == 0) & (data['FELEM_ERR'][:,iel] < 0.2))[0]
+        abun = data['FELEM'][:,iel]
+        if xh and not elems['ELEMTOH'][0][iel] : abun+=data['FPARAM'][:,3]
+        if not xh and elems['ELEMTOH'][0][iel] : abun-=data['FPARAM'][:,3]
+    return abun, ok
+
+def cal(allstar,elems,xh=False) :
+    ''' 
+    Determine internal calibration relations for elements
+   
+    Args:
+        allstar : allStar-like data structure, (i.e., HDU1 of allStar)
+        elems : elem-like data structure (e.g. HDU3 of allStar)
+    '''
+    # select cluster members from array that don't have STAR_BAD into data structure
+    clust=apselect.clustdata()
+    clusts = ['M92','M15','M71','N2420', 'M67', 'N188', 'N7789', 'N6819', 'N6791']
+    gd=apselect.select(allstar,badval='STAR_BAD')
+    all=[]
+    print 'selecting'
+    for cluster in clusts :
+        j=apselect.clustmember(allstar[gd],cluster,raw=True)
+        all=set(all).union(gd[j].tolist())
+    data=allstar[list(all)]
+    # in the abbreviated array, get the lists of cluster mbmers
+    members=[]
+    for cluster in clusts :
+        j=apselect.clustmember(data,cluster,raw=True)
+        members.append(j)
+    pdb.set_trace()
+
+    # loop over elements
+    for el in np.append(elems['ELEM_SYMBOL'][0],['M','alpha']) :
+    #for el in ['Fe'] :
+        print el
+        # parameters for the fit for this element
+        order=1
+        # get the good abundance data for this element, load variables for fit (teff, abun, nclust)
+        abundata, ok = getabun(data,elems,el,xh=xh)
+        teff=np.array([])
+        abun=np.array([])
+        nclust=np.array([],dtype=int)
+        for iclust in range(len(clusts)) :
+            i=np.where(clust.name == clusts[iclust])
+            mh=clust[i].mh
+            name=clust[i].name
+            # get cluster members: intersection of all cluster members and good ones for this element
+            j=list(set(ok).intersection(members[iclust]))
+            if len(j) > 3 :
+                teff=np.append(teff,data['FPARAM'][j,0]-4500.)
+                abun=np.append(abun,abundata[j])
+                nclust=np.append(nclust,np.array([iclust]*len(j),dtype=int))
+        if len(teff) > 0 :
+            deriv=calderiv(teff,abun,nclust,order=1)
+            soln,inv = fit.linear(abun,deriv)
+            print soln
+            pdb.set_trace()
+
+def calderiv(teff,abun,nclust,order=1) :
+    '''
+    Function/derivatives for abundance calibration
+    '''
+    uclust=np.unique(nclust)
+    npar=order+len(uclust)
+    npts=len(teff)
+    deriv=np.zeros([npar,npts])
+    for iclust in range(len(uclust)) :
+        j=np.where(nclust == uclust[iclust])[0]
+        deriv[iclust,j] = 1.
+    deriv[len(uclust),:] = teff
+    for iorder in range(1,order) :
+        deriv[len(uclust)+iorder,:] = deriv[iorder-1,:]*teff
+    return deriv
+        
 
 
 if __name__ == '__main__' :
