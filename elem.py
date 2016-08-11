@@ -1,4 +1,4 @@
-# makes a bunch of [X/Fe] vs [Fe/H] plots for use with calibration
+# routines related to individual element calibration for APOGEE/ASPCAP
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -444,7 +444,6 @@ def getabun(data,elems,el,xh=False,terange=[-1,10000]) :
     '''
     Return the abundance of the requested element, given data array, elem array, element
     '''
-    print 'getabun: ', el.strip()
     if el.strip() == 'M' :
         ok=np.where(((data['PARAMFLAG'][:,3] & 255) == 0) & (data['FPARAM_COV'][:,3,3] < 0.2) &
                     (data['FPARAM'][:,0] >= terange[0]) & (data['FPARAM'][:,0] <= terange[1]) )[0]
@@ -513,8 +512,9 @@ def cal(allstar,elems,xh=False,plot=True) :
                        ])
     allpars=[]
     iel=0
+    if plot :
+        fig,ax = plots.multi(1,2,hspace=0.001)
     for el in np.append(elems['ELEM_SYMBOL'][0],['M','alpha']) :
-        print el
         # parameters for the fit for this element
         pars = dr13cal(el)
         for key in ['elemfit','mhmin','te0','temin','temax','caltemin','caltemax','extfit','extpar'] :
@@ -524,9 +524,7 @@ def cal(allstar,elems,xh=False,plot=True) :
         if pars['elemfit'] >= 0 :
             # get the good abundance data for this element, load variables for fit (teff, abun, clust)
             abundata, ok = getabun(data,elems,el,xh=xh,terange=[pars['temin'],pars['temax']])
-            teff=np.array([])
-            visit=np.array([],dtype=int)
-            abun=np.array([])
+            ind=np.array([],dtype=int)
             clust=np.array([],dtype='S16')
             for iclust in range(len(clusts)) :
                 i=np.where(clusters.name == clusts[iclust])
@@ -535,11 +533,12 @@ def cal(allstar,elems,xh=False,plot=True) :
                     # get cluster members: intersection of all cluster members and good ones for this element
                     j=list(set(ok).intersection(members[iclust]))
                     if len(j) > 3 :
-                        visit=np.append(visit,data['VISIT'][j])
-                        teff=np.append(teff,data['FPARAM'][j,0])
-                        abun=np.append(abun,abundata[j])
+                        ind=np.append(ind,j)
                         clust=np.append(clust,[clusts[iclust]]*len(j))
-            if len(teff) > 0 :
+            if len(ind) > 0 :
+                teff=data['FPARAM'][ind,0]
+                abun=abundata[ind]
+                visit=data['VISIT'][ind]
                 # only use visits=0 for fit
                 gd=np.where(visit == 0)[0]
                 bd=np.where(visit > 0)[0]
@@ -549,9 +548,11 @@ def cal(allstar,elems,xh=False,plot=True) :
                 pars['clust'] = np.sort(np.unique(clust[gd]))
                 pars['par'] = soln[nclust:len(soln)]
                 pars['abun'] = soln[0:nclust]
+                func=calfunc(pars,teff,abun,clust,order=pars['elemfit'])
+                print el, (abun[gd]-func[gd]).std(), (abun[bd]-func[bd]).std()
                 if plot :
-                    fig,ax = plots.multi(1,2,hspace=0.001)
-                    func=calfunc(pars,teff,abun,clust,order=pars['elemfit'])
+                    ax[0].cla()
+                    ax[1].cla()
                     plots.plotp(ax[0],teff[gd],abun[gd]-func[gd], typeref=clust[gd],
                                 types=clusts,color=colors,marker=markers,size=16,yt=el)
                     plots.plotp(ax[0],teff[bd],abun[bd]-func[bd],typeref=clust[bd],
@@ -561,9 +562,17 @@ def cal(allstar,elems,xh=False,plot=True) :
                                 types=clusts,color=colors,marker=markers,size=16,xt='Teff',yt=el)
                     plots.plotp(ax[1],teff[bd],abun[bd]-func[bd],typeref=clust[bd],
                                 types=clusts,color=colors,marker=markers,size=16,facecolors='none')
+                    plots._id_cols=['APOGEE_ID','VISIT']
+                    plots._data=data[ind]
+                    plots._data_x=teff
+                    plots._data_y=abun-func
                     x=np.linspace(pars['temin'],pars['temax'],200)
                     func=calfunc(pars,x,x*0,np.array(['']*len(x)),order=pars['elemfit'])
                     plots.plotl(ax[1],x,func)
+                    z=np.where(teff < 4100)[0]
+                    for zz in z :
+                      print data['APOGEE_ID'][ind[zz]], teff[zz], abun[zz], visit[zz]
+                    plots.event(fig)
                     pdb.set_trace()
         allpars.append(pars)
 
@@ -606,7 +615,6 @@ def calderiv(teff,abun,clust,order=1) :
     for iclust in range(len(uclust)) :
         j=np.where(clust == uclust[iclust])[0]
         deriv[iclust,j] = 1.
-    print 'order: ', order
     if order >= 1:
         for iorder in range(0,order) :
             deriv[len(uclust)+iorder,:] = teff**(iorder+1)
