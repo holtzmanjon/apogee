@@ -528,6 +528,7 @@ def cal(allstar,elems,xh=False,plot=True) :
             visit=np.array([],dtype=int)
             abun=np.array([])
             clust=np.array([],dtype='S16')
+            apogee_id=np.array([],dtype='S16')
             for iclust in range(len(clusts)) :
                 i=np.where(clusters.name == clusts[iclust])
                 mh=clusters[i].mh
@@ -538,6 +539,7 @@ def cal(allstar,elems,xh=False,plot=True) :
                         visit=np.append(visit,data['VISIT'][j])
                         teff=np.append(teff,data['FPARAM'][j,0])
                         abun=np.append(abun,abundata[j])
+                        apogee_id=np.append(apogee_id,data['APOGEE_ID'][j])
                         clust=np.append(clust,[clusts[iclust]]*len(j))
             if len(teff) > 0 :
                 # only use visits=0 for fit
