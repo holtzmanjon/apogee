@@ -526,6 +526,7 @@ def cal(allstar,elems,xh=False,plot=True) :
             abundata, ok = getabun(data,elems,el,xh=xh,terange=[pars['temin'],pars['temax']])
             ind=np.array([],dtype=int)
             clust=np.array([],dtype='S16')
+            apogee_id=np.array([],dtype='S16')
             for iclust in range(len(clusts)) :
                 i=np.where(clusters.name == clusts[iclust])
                 mh=clusters[i].mh

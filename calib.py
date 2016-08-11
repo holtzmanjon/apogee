@@ -1,3 +1,5 @@
+# routines related to APOGEE/ASPCAP calibration
+
 import astropy.io.fits as fits
 import os
 import numpy as np

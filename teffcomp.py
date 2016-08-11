@@ -25,7 +25,7 @@ def bindata(xdata,ydata,bins) :
       mean[i]=ydata[j].mean() 
     return mean
 
-def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75]) :
+def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False) :
     """
     Compares allstar ASPCPAP Teff with photometric Teff from GHB for sample of stars with GLAT>glatmin and SFD_EBV<ebvmax,
     does fits
@@ -48,7 +48,7 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     j=np.where((allstar['GLAT']>glatmin)&(allstar['SFD_EBV']<ebvmax))[0]
     allstar=allstar[j]
 
-    # plot Teff difference against metallicity
+    # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
     yr=[-400,300]
@@ -56,7 +56,10 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     bins=np.arange(-2.5,0.75,0.25)
     # diff color-coded by gravity as f([M/H])
     ghb=stars.ghb(allstar['J']-allstar['K'],allstar['FPARAM'][:,3],dwarf=dwarf)
-    plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
+    if alpha :
+       plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,6],zr=[-0.1,0.4],xr=xr,yr=[-600,300],xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt=r'[$\alpha$/M]')
+    else :
+        plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
     mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins)
     plots.plotp(ax,bins,mean,marker='o',size=40)
     ax.text(0.1,0.9,'EBV<0.02',transform=ax.transAxes)
@@ -64,8 +67,28 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     x=np.linspace(-3,1,200)
     pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],degree=2)
     plots.plotl(ax,x,pfit(x))
-    fig.savefig('teffcomp.png')
     print pfit
+
+    # separate fits for low/hi alpha/M if requested
+    if alpha :
+        gdlo=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],alpha=[-0.1,0.1],raw=True)
+        mean=bindata(allstar['FPARAM'][gdlo,3],allstar['FPARAM'][gdlo,0]-ghb[gdlo],bins)
+        plots.plotp(ax,bins,mean,marker='o',size=40,color='g')
+        pfit = fit.fit1d(allstar['FPARAM'][gdlo,3],allstar['FPARAM'][gdlo,0]-ghb[gdlo],ydata=allstar['FPARAM'][gdlo,0],degree=2)
+        plots.plotl(ax,x,pfit(x))
+        print pfit
+        print 'low alpha: ', len(gdlo)
+
+        gdhi=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],alpha=[0.1,0.5],raw=True)
+        mean=bindata(allstar['FPARAM'][gdhi,3],allstar['FPARAM'][gdhi,0]-ghb[gdhi],bins)
+        plots.plotp(ax,bins,mean,marker='o',size=40,color='b')
+        pfit = fit.fit1d(allstar['FPARAM'][gdhi,3],allstar['FPARAM'][gdhi,0]-ghb[gdhi],ydata=allstar['FPARAM'][gdhi,0],degree=2)
+        plots.plotl(ax,x,pfit(x))
+        print pfit
+        print 'hi alpha: ', len(gdhi)
+
+    fig.savefig('teffcomp.png')
+    pdb.set_trace()
    
     # do some test 2D and 1D fits and plots 
     fig,ax=plots.multi(2,2,hspace=0.5,wspace=0.001)
