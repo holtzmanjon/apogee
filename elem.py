@@ -549,7 +549,7 @@ def cal(allstar,elems,xh=False,plot=True) :
                 pars['par'] = soln[nclust:len(soln)]
                 pars['abun'] = soln[0:nclust]
                 func=calfunc(pars,teff,abun,clust,order=pars['elemfit'])
-                print el, (abun[gd]-func[gd]).std(), (abun[bd]-func[bd]).std()
+                print '{:<18s}{:8.3f}{:8.3f}'.format(el, (abun[gd]-func[gd]).std(), (abun[bd]-func[bd]).std())
                 if plot :
                     ax[0].cla()
                     ax[1].cla()
