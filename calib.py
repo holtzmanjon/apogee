@@ -40,7 +40,7 @@ def kepmatch(cal) :
     #    tmp=star[1:]
     #    j=np.where(cal['APOGEE_ID'].find(tmp) >= 0)[0]
     #    if len(j) > 1 :
-    #        print 'ERROR, more than one match!'
+    #        print('ERROR, more than one match!')
     #    elif len(j) > 0 :
     #        kepindex.append(istar)
     #        calindex.append(j)
@@ -218,8 +218,8 @@ def fit1d(x,data,degree=1,reject=0) :
         gd=np.where(abs(data-pfit(x)) < reject)[0]
         bd=np.where(abs(data-pfit(x)) >= reject)[0]
         #for i in bd :
-        #    print x[i],10.**data[i]
-        print 'rejected ',len(x)-len(gd),' of ',len(x),' points'
+        #    print(x[i],10.**data[i])
+        print('rejected ',len(x)-len(gd),' of ',len(x),' points')
         pfit = fit_p(p_init, x[gd], data[gd])
     return pfit
 
@@ -231,7 +231,7 @@ def fit2d(x,y,data,degree=1,reject=0) :
     if reject > 0 :
         gd=np.where(abs(data-pfit(x,y)) < reject)[0]
         bd=np.where(abs(data-pfit(x,y)) >= reject)[0]
-        print 'rejected ',len(x)-len(gd),' of ',len(x),' points'
+        print( 'rejected ',len(x)-len(gd),' of ',len(x),' points')
         pfit = fit_p(p_init, x[gd], y[gd], data[gd])
     return pfit
 
@@ -251,12 +251,12 @@ def fit_logg(cal,kep) :
     diff = logg - kep.LOGGRG
     gd = np.where((mh>-1) & (logg < 3.8) & (teff<5500) & (teff>3700) & (abs(diff)<0.5) & (kep.LOGGRG > 0.1))[0]
     fit = np.where((kep[gd].STELLO_EVSTATES.find('RGB') >= 0) | (dt(teff[gd],logg[gd],mh[gd]) < 0) )[0]
-    print kep[gd[fit]].STELLO_EVSTATES
+    print( kep[gd[fit]].STELLO_EVSTATES)
     gfit1d = fit1d(mh[gd[fit]], diff[gd[fit]])
     gfit2d = fit2d(mh[gd[fit]], logg[gd[fit]], diff[gd[fit]])
 
     fit = np.where((kep[gd].STELLO_EVSTATES.find('RC') >= 0) | (dt(teff[gd],logg[gd],mh[gd]) > 100) )[0]
-    print kep[gd[fit]].STELLO_EVSTATES
+    print(kep[gd[fit]].STELLO_EVSTATES)
     grcfit1d = fit1d(mh[gd[fit]], diff[gd[fit]])
     grcfit2d = fit2d(mh[gd[fit]], logg[gd[fit]], diff[gd[fit]])
     return gfit1d, gfit2d, grcfit1d, grcfit2d
@@ -412,7 +412,7 @@ def plot_hr_grid(file) :
     gk = np.where( data['CLASS'].find('GK') >= 0)
     m = np.where( data['CLASS'].find('M') >= 0)
     f = np.where( data['CLASS'].find('F') >= 0)
-    print type(teff)
+    print(type(teff))
     grid = teff*0.
     grid[f] = 0
     grid[gk] = 1
@@ -427,6 +427,6 @@ def plot_spec(apogee_id) :
     # find the directory assuming it is under the current directory
     dir = glob.glob('*/*'+apogee_id+'*')[0].split('/')[0]
     hdu=apload.apStar('../cal/'+dir,apogee_id)
-    print starflag.starflag(hdu[0].header['STARFLAG'])
+    print(starflag.starflag(hdu[0].header['STARFLAG']))
     hdu=apload.aspcapStar(dir,apogee_id)
     applot.aspcapStar(hdu)

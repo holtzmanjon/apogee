@@ -33,7 +33,7 @@ def plot(ax,a,r,y,xaxis='TEFF',zaxis='M_H',types=None,size=[40],xr=[3500,6000],z
     '''
     for i in range(len(types)) :
         gd = np.where(r['class'] == types[i])[0]
-        print types[i], len(gd), a[xaxis][gd],y[gd]
+        print(types[i], len(gd), a[xaxis][gd],y[gd])
         sz= size[i] if (len(size) > 1)  else size[0]
         mark=marker[i] if (len(marker) > 1) else marker[0]
         plots.plotc(ax,a[xaxis][gd],y[gd],a[zaxis][gd],xt=xaxis,yt='$\Delta$ '+yt,xr=xr,yr=yr,zr=zr,size=sz,marker=mark)

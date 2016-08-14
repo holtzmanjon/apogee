@@ -24,7 +24,7 @@ def read(file=None) :
     if file is None :
         a=apload.allStar()[1].data
     else :
-        print 'reading', file
+        print('reading', file)
         a=fits.open(file)[1].data
     elem=c['ELEM_SYMBOL'][0]
     elemtoh=c['ELEMTOH'][0]
@@ -57,7 +57,7 @@ def plot(a,sn=[0,1000]) :
     files=[]
 
     name='param'
-    print name
+    print(name)
     fname = 'param/'+name
     # loop over plots
     xtit = []
@@ -165,7 +165,7 @@ def plot(a,sn=[0,1000]) :
               xt= 'Teff'
               y=[]
               for iclass in [3,4,5,6,11,12,13,14,15,16,17,18] :
-                print iclass
+                print(iclass)
                 y.append(a['FPARAM_CLASS'][gdgiant,iclass,0]-a['FPARAM'][gdgiant,0])
               yr=[-100.,100.]
               yt = 'Delta T'

@@ -57,7 +57,7 @@ def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1) :
     teff, logg, mh, vmicro, vmacro, meanfib = read(file)
     gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmacro < vrange[1]))
     gd=gd[0]
-    print 'len(gd)', len(gd)
+    print('len(gd)', len(gd))
     fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree)
     #fit2d = fit.fit2d(teff[gd], logg[gd], vmacro[gd],degree=degree)
     fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree)
@@ -72,10 +72,10 @@ def litplot(mass=1, feh=0) :
 #    parser.add_argument("--mass",default=1.)
 #    parser.add_argument("--feh",default=0.)
 #    args=parser.parse_args()
-#    print 'Using mass: ', args.mass
+#    print('Using mass: ', args.mass)
 #    mass=float(args.mass)
 #    feh=float(args.feh)
-#    print 'Using feh: ', feh
+#    print('Using feh: ', feh)
 #    mass = 0.9
 
     # setup plots
@@ -93,7 +93,7 @@ def litplot(mass=1, feh=0) :
         else: 
             c='m'
         cfeh='z'+c+'{:02d}'.format(int(round(abs(iso)*10)))
-        print cfeh
+        print(cfeh)
         a=ascii.read(os.getenv('ISOCHRONE_DIR')+'/'+cfeh+'.dat')
         age=a['col2']
         j=np.where((age == 9.6) | (age == 9.0) | (age == 10.0))

@@ -67,7 +67,7 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     x=np.linspace(-3,1,200)
     pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],degree=2)
     plots.plotl(ax,x,pfit(x))
-    print pfit
+    print(pfit)
 
     # separate fits for low/hi alpha/M if requested
     if alpha :
@@ -76,16 +76,16 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
         plots.plotp(ax,bins,mean,marker='o',size=40,color='g')
         pfit = fit.fit1d(allstar['FPARAM'][gdlo,3],allstar['FPARAM'][gdlo,0]-ghb[gdlo],ydata=allstar['FPARAM'][gdlo,0],degree=2)
         plots.plotl(ax,x,pfit(x))
-        print pfit
-        print 'low alpha: ', len(gdlo)
+        print(pfit)
+        print('low alpha: ', len(gdlo))
 
         gdhi=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],alpha=[0.1,0.5],raw=True)
         mean=bindata(allstar['FPARAM'][gdhi,3],allstar['FPARAM'][gdhi,0]-ghb[gdhi],bins)
         plots.plotp(ax,bins,mean,marker='o',size=40,color='b')
         pfit = fit.fit1d(allstar['FPARAM'][gdhi,3],allstar['FPARAM'][gdhi,0]-ghb[gdhi],ydata=allstar['FPARAM'][gdhi,0],degree=2)
         plots.plotl(ax,x,pfit(x))
-        print pfit
-        print 'hi alpha: ', len(gdhi)
+        print(pfit)
+        print('hi alpha: ', len(gdhi))
 
     fig.savefig('teffcomp.png')
     pdb.set_trace()
@@ -95,11 +95,11 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     ax[0,1].xaxis.set_visible(False)
     ax[0,1].yaxis.set_visible(False)
     pfit = fit.fit2d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,plot=ax[0,0],zr=[-500,200],xt='[M/H]',yt=['Teff'],zt='$\Delta Teff$')
-    print pfit
+    print(pfit)
     pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000])
-    print pfit
+    print(pfit)
     pfit = fit.fit1d(allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5])
-    print pfit
+    print(pfit)
 
 
 def irfm(allstar,trange=[4000,5000],mhrange=[-2.5,0.75]) :

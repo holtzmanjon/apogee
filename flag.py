@@ -70,7 +70,7 @@ def aspcapflagval(flag) :
         val=2**j[0] 
     else :
         val=0
-        print 'WARNING: undefined mask: ',flag
+        print('WARNING: undefined mask: ',flag)
     return val
 
 

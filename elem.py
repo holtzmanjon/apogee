@@ -151,7 +151,7 @@ def plot(a,elem,etoh,dwarf=False,suffix='',gcal=None,dcal=None,glon=None,glat=No
                 refoffset *= -1
 
         name=prefix+el
-        print name
+        print(name)
         fname = 'elem/'+name
         # loop over plots
         xtit = []
@@ -304,7 +304,7 @@ def plot(a,elem,etoh,dwarf=False,suffix='',gcal=None,dcal=None,glon=None,glat=No
                 m1, m2 = esutil.numpy_util.match(a['APOGEE_ID'][gd],clust['APOGEE_ID'][m67])
                 plots.plotp(ax,x[m1],y[m1],size=6,color='k',xr=xr,yr=yr)
                 if iplot == 2 :
-                    print m1, x[m1]
+                    print(m1, x[m1])
                 if dwarf : 
                     refstar = 'VESTA'
                     if dcal is not None : 
@@ -403,11 +403,11 @@ def globalscatter(allstar,elems) :
     clust=apselect.clustdata()
     gd=apselect.select(allstar,badval='STAR_BAD')
     members=[]
-    print 'selecting'
+    print('selecting')
     clusts = ['N2420', 'M67', 'N188', 'N7789', 'N6819', 'N6791']
     for cluster in clusts :
         j=np.array(apselect.clustmember(allstar[gd],cluster,raw=True))
-        print cluster,len(j)
+        print(cluster,len(j))
         members.append(j)
     pdb.set_trace()
 
@@ -437,7 +437,7 @@ def globalscatter(allstar,elems) :
                 if len(ok) > 3 :
                     all=np.append(all,abun[ok]-abun[ok].mean())
             iclust+=1
-        print el, all.mean(), all.std(), len(all)
+        print(el, all.mean(), all.std(), len(all))
         iel+=1
 
 def getabun(data,elems,el,xh=False,terange=[-1,10000]) :
@@ -483,7 +483,7 @@ def cal(allstar,elems,xh=False,plot=True) :
     colors = ['r','g','b','c','y','m','r','g','b','c']
     gd=apselect.select(allstar,badval='STAR_BAD',raw=True)
     all=[]
-    print 'selecting'
+    print('selecting')
     for cluster in clusts :
         j=apselect.clustmember(allstar[gd],cluster,raw=True)
         all=set(all).union(gd[j].tolist())
@@ -550,7 +550,7 @@ def cal(allstar,elems,xh=False,plot=True) :
                 pars['par'] = soln[nclust:len(soln)]
                 pars['abun'] = soln[0:nclust]
                 func=calfunc(pars,teff,abun,clust,order=pars['elemfit'])
-                print '{:<18s}{:8.3f}{:8.3f}'.format(el, (abun[gd]-func[gd]).std(), (abun[bd]-func[bd]).std())
+                print( '{:<18s}{:8.3f}{:8.3f}'.format(el, (abun[gd]-func[gd]).std(), (abun[bd]-func[bd]).std()))
                 if plot :
                     ax[0].cla()
                     ax[1].cla()
@@ -572,7 +572,7 @@ def cal(allstar,elems,xh=False,plot=True) :
                     plots.plotl(ax[1],x,func)
                     z=np.where(teff < 4100)[0]
                     for zz in z :
-                      print data['APOGEE_ID'][ind[zz]], teff[zz], abun[zz], visit[zz]
+                      print(data['APOGEE_ID'][ind[zz]], teff[zz], abun[zz], visit[zz])
                     plots.event(fig)
                     pdb.set_trace()
         allpars.append(pars)
