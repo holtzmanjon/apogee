@@ -11,6 +11,7 @@ import argparse
 import os
 from holtz.tools import fit
 from holtz.tools import plots
+from holtz.tools import match
 
 def fit_vmicro(file,mhmin=-1,loggmax=3.8,vrange=[0,4],degree=1,reject=0) :
     """ 
@@ -29,15 +30,20 @@ def fit_vmicro(file,mhmin=-1,loggmax=3.8,vrange=[0,4],degree=1,reject=0) :
         fit1d, fit2d : 1D and 2D polynomial fits
     """
     teff, logg, mh, vmicro, vmacro, meanfib = read(file)
-    gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmicro < vrange[1]))
+    gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmicro < vrange[1]))[0]
 
-    fig,ax = plots.multi(2,3)
-    fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject)
-    fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree)
+    fig,ax = plots.multi(1,2)
+    fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0],ydata=mh[gd],log=True,xt='log g',yt='vmicro')
+    dr13fit=models.Polynomial1D(degree=3)
+    dr13fit.parameters=[0.226,-0.0228,0.0297,-0.013]
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro')
+
+    fig,ax = plots.multi(1,2)
+    fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree,plot=ax[1])
     plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
     return fit1d, fit2d
 
-def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1) :
+def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1,apokasc='APOKASC_cat_v3.6.0.fits') :
     """ 
     Fit macroturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
 
@@ -55,12 +61,31 @@ def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1) :
     """
 
     teff, logg, mh, vmicro, vmacro, meanfib = read(file)
-    gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmacro < vrange[1]))
-    gd=gd[0]
+    gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmacro < vrange[1]))[0]
     print('len(gd)', len(gd))
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree)
+
+    cal=fits.open(file)[1].data
+    apokasc=fits.open(os.environ['IDLWRAP_DIR']+'/data/'+apokasc)[1].data
+    pdb.set_trace()
+    i1,i2=match.match(cal['APOGEE_ID'],apokasc['2MASS_ID'])
+    rgb=np.where(apokasc['CONS_EVSTATES'][i2] == 'RGB')[0]
+    rc=np.where(apokasc['CONS_EVSTATES'][i2] == 'RC')[0]
+    type=mh*0.
+    type[i1[rgb]]=1
+    type[i1[rc]]=-1
+
+    fig,ax=plots.multi(1,2)
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0],xt='log g', yt='vmacro',ydata=mh[gd])
     #fit2d = fit.fit2d(teff[gd], logg[gd], vmacro[gd],degree=degree)
-    fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree)
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1],xt='log g', yt='vmacro',ydata=type[gd])
+
+
+    fig,ax=plots.multi(1,2)
+    fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0],xt='log g', yt='[M/H]',zt='log(vmacro)')
+    # DR13 fit 
+    fit2d.parameters=[0.741,-0.0998,-0.225]
+    fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[1],xt='log g', yt='[M/H]',zt='log(vmacro)',pfit=fit2d)
+    pdb.set_trace()
     plot(teff, logg, mh, meanfib, vmacro, vrange, fit1d, fit2d, vt='vmacro')
     return fit1d, fit2d
 
