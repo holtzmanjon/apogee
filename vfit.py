@@ -13,7 +13,7 @@ from holtz.tools import fit
 from holtz.tools import plots
 from holtz.tools import match
 
-def fit_vmicro(file,mhmin=-1,loggmax=3.8,vrange=[0,4],degree=1,reject=0) :
+def fit_vmicro(file,mhrange=[-1,1],loggrange=[-1.,3.8],vrange=[0,4],maxerr=0.1, degree=1,reject=0) :
     """ 
     Fit microturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
 
@@ -22,28 +22,48 @@ def fit_vmicro(file,mhmin=-1,loggmax=3.8,vrange=[0,4],degree=1,reject=0) :
 
     Keyword args :
         degree : degree of fit (default=1)
-        mhmin : minimum [M/H] (default=-1)
-        loggmax : maximum log g (default=3.8)
+        mhrange : range of [M/H] (default=[-1,1])
+        loggrange : range of log g (default=[-1,3.8])
+        maxerr : maximum uncertainy in vmicro
         vrange  : scaling range for vmacro plot, vrange[1] sets maximum good vmacro
 
     Returns:
         fit1d, fit2d : 1D and 2D polynomial fits
     """
-    teff, logg, mh, vmicro, vmacro, meanfib = read(file)
-    gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmicro < vrange[1]))[0]
+    data=fits.open(file)[1].data
+    vmicro = data['fparam'][:,2]
+    vmacro = data['fparam'][:,7]
+    teff = data['fparam'][:,0]
+    logg = data['fparam'][:,1]
+    mh = data['fparam'][:,3]
+    try :
+       meanfib = data['meanfib']
+    except :
+       meanfib = 0.*vmicro
+    gd = np.where((mh>mhrange[0]) & (mh<mhrange[1]) & (logg > loggrange[0]) & (logg < loggrange[1]) & 
+                  (np.sqrt(data['fparam_cov'][:,2,2]) < maxerr) & (10.**vmicro < vrange[1]))[0]
 
-    fig,ax = plots.multi(1,2)
-    fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0],ydata=mh[gd],log=True,xt='log g',yt='vmicro')
+    # 1D plots a f(log g)
+    fig,ax = plots.multi(2,3)
+    fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,0],ydata=mh[gd],log=True,xt='log g',yt='vmicro ([M/H])',yr=[-2.5,0.5])
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,1],ydata=teff[gd],log=True,xt='log g',yt='vmicro (teff)',yr=[3500,5500],pfit=fit1d)
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,0],ydata=meanfib[gd],log=True,xt='log g',yt='vmicro (meanfib)',yr=[0,300],pfit=fit1d)
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,1],ydata=vmacro[gd],log=True,xt='log g',yt='vmicro (vmacro)',yr=[0,300],pfit=fit1d)
     dr13fit=models.Polynomial1D(degree=3)
     dr13fit.parameters=[0.226,-0.0228,0.0297,-0.013]
-    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro')
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro')
+    # plot ALL points (even outside of fit range)
+    plots.plotc(ax[0,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5])
 
+    # 2D plots a f(teff, logg)
     fig,ax = plots.multi(1,2)
     fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree,plot=ax[1])
-    plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
+
+    #summary plots
+    #plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
     return fit1d, fit2d
 
-def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1,apokasc='APOKASC_cat_v3.6.0.fits') :
+def fit_vmacro(file,mhrange=[-1.,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1,apokasc='APOKASC_cat_v3.6.0.fits') :
     """ 
     Fit macroturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
 
@@ -52,21 +72,28 @@ def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1,apokasc='APOKA
 
     Keyword args :
         degree : degree of fit (default=1)
-        mhmin : minimum [M/H] (default=-1)
-        loggmax : maximum log g (default=3.8)
+        mhrange : range of [M/H] (default=[1.,1])
+        loggrange : range of log g (default=[1.,3.8])
         vrange  : scaling range for vmacro plot, vrange[1] sets maximum good vmacro
 
     Returns:
         fit1d, fit2d : 1D and 2D polynomial fits
     """
 
-    teff, logg, mh, vmicro, vmacro, meanfib = read(file)
-    gd = np.where((mh>mhmin) & (logg < loggmax) & (10.**vmacro < vrange[1]))[0]
+    data=fits.open(file)[1].data
+    vmicro = data['fparam'][:,2]
+    teff = data['fparam'][:,0]
+    logg = data['fparam'][:,1]
+    mh = data['fparam'][:,3]
+    try :
+       meanfib = data['meanfib']
+    except :
+       meanfib = 0.*vmicro
+    gd = np.where((mh>mhrange[0]) & (mh<mhrange[1]) & (logg > loggrange[0]) (logg < loggrange[1]) & (10.**vmacro < vrange[1]))[0]
     print('len(gd)', len(gd))
 
     cal=fits.open(file)[1].data
     apokasc=fits.open(os.environ['IDLWRAP_DIR']+'/data/'+apokasc)[1].data
-    pdb.set_trace()
     i1,i2=match.match(cal['APOGEE_ID'],apokasc['2MASS_ID'])
     rgb=np.where(apokasc['CONS_EVSTATES'][i2] == 'RGB')[0]
     rc=np.where(apokasc['CONS_EVSTATES'][i2] == 'RC')[0]
@@ -75,10 +102,8 @@ def fit_vmacro(file,mhmin=-1, loggmax=3.8, vrange=[1,15],degree=1,apokasc='APOKA
     type[i1[rc]]=-1
 
     fig,ax=plots.multi(1,2)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0],xt='log g', yt='vmacro',ydata=mh[gd])
-    #fit2d = fit.fit2d(teff[gd], logg[gd], vmacro[gd],degree=degree)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1],xt='log g', yt='vmacro',ydata=type[gd])
-
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0],xt='log g', yt='vmacro (mh)',ydata=mh[gd])
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1],xt='log g', yt='vmacro (RGB/RC)',ydata=type[gd])
 
     fig,ax=plots.multi(1,2)
     fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0],xt='log g', yt='[M/H]',zt='log(vmacro)')
@@ -326,32 +351,6 @@ def vmicro_bergemann(teff,logg,feh) :
     b3 =  0.0  ; c3 = 0.0
     vt[j] = (a1 + b1*(t[j]-to) + c1*(t[j]-to)**2 + b2*(g[j]-go) + c2*(g[j]-go)**2 + b3*feh[j] + c3*feh[j]**2)
     return vt
-
-
-# fits
-
-def read(file) :
-    '''
-    Reads an allStar file and parses and returns teff, logg, mh, vmicro, vmacro, meanfib
-
-    Args:
-        file : name of file to read
-
-    Returns:
-        teff, logg, mh, vmicro, vmacro, meanfib 
-    '''
-    data=fits.open(file)[1].data
-    vmicro = data['fparam'][:,2]
-    vmacro = data['fparam'][:,7]
-    teff = data['fparam'][:,0]
-    logg = data['fparam'][:,1]
-    mh = data['fparam'][:,3]
-    try :
-       meanfib = data['meanfib']
-    except :
-       meanfib = 0.*vmicro
-    return teff, logg, mh, vmicro, vmacro, meanfib
-
 
 def plot(teff, logg, mh, meanfib, v, vr, fit1d, fit2d, 
          xr=[5500,3500], yr=[5,0], vt='vmicro') :
