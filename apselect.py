@@ -3,6 +3,8 @@ import pdb
 import copy
 from astropy.io import ascii
 import os
+from holtz.tools import plots
+import matplotlib.pyplot as plt
 
 def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-100.,100.],sn=[0,1000], raw=False, glon=[0,360],glat=[-90,90],grid=None,field=None,giants=None, dwarfs=None,rgb=None, rc=None,inter=None, id=None, redid=None) :
     '''  
@@ -127,7 +129,7 @@ def clustdata() :
     """
 
     clust=['M92','M15','M53','N5466','N4147',
-        'M2','M13','M3','M5','M107',
+        'M2','M13','M3','M5','M12','M107',
         'M71','N2243','Be29', 'N2158','M35','N2420',
         'N188','M67','N7789','Pleiades','N6819',
         'N6791']
@@ -205,7 +207,7 @@ def clustdata() :
     return out.view(np.recarray)
 
 
-def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=False,plot=False) :
+def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=False,plot=False,hard=None) :
 
     clust=clustdata()
     ic = np.where( np.core.defchararray.strip(clust.name) == cluster)[0]
@@ -233,12 +235,16 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
         print 'no stars after location criterion'
         jc=[]
     if plot :
-        jplot=np.where((np.abs(ra-clust[ic].ra)*np.cos(clust[ic].dec*np.pi/180.) < 3.) & 
-                (np.abs(data['dec']-clust[ic].dec) < 3.))[0]
-        ax=plots.ax()
-        plots.plotp(ra[jplot],data['dec'][jplot],color='k')
-        plots.plotp(ra[c],data['dec'][jc],color='g')
-        pdb.set_trace()
+        jf=np.where((np.abs(ra-clust[ic].ra)*np.cos(clust[ic].dec*np.pi/180.) < 1.5) & 
+                (np.abs(data['dec']-clust[ic].dec) < 1.5))[0]
+        fig,ax=plots.multi(1,1)
+        plots.plotp(ax,ra[jf],data['dec'][jf],color='k',size=20)
+        plots.plotp(ax,ra[jc],data['dec'][jc],color='g',size=20)
+        if hard is not None :
+            print(hard+'/'+clust[ic].name[0]+'_pos.jpg')
+            fig.savefig(hard+'/'+clust[ic].name[0]+'_pos.jpg')
+        else :
+            pdb.set_trace()
 
     # RV criterion
     try :
@@ -246,6 +252,14 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
     except :
         vhelio = data['vhelio_avg']
     j=np.where(np.abs(vhelio[jc]-clust[ic].rv) < clust[ic].drv)[0]
+    if plot :
+        ax.cla() 
+        ax.hist(vhelio[jf],color='k',bins=np.arange(clust[ic].rv-100,clust[ic].rv+100,1.),histtype='step')
+        ax.hist(vhelio[jc],color='g',bins=np.arange(clust[ic].rv-100,clust[ic].rv+100,1.),histtype='step')
+        if hard is not None :
+            fig.savefig(hard+'/'+clust[ic].name[0]+'_rv.jpg')
+        else :
+            pdb.set_trace()
     if len(j) > 0 :
         jc=jc[j]
     else :
@@ -257,15 +271,21 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
         param='FPARAM'
     else :
         param='PARAM'
-    j = np.where((data[param][jc,1] >= logg[0]) & (data[param][jc,1] <= logg[1]) &
-                 (data[param][jc,0] >= te[0]) & (data[param][jc,0] <= te[1]) )[0]
-    if len(j) > 0 :
-        jc=jc[j]
-    else :
-        jc=[]
-        print 'no stars after parameters criterion'
+    try :
+        j = np.where((data[param][jc,1] >= logg[0]) & (data[param][jc,1] <= logg[1]) &
+                     (data[param][jc,0] >= te[0]) & (data[param][jc,0] <= te[1]) )[0]
+        if len(j) > 0 :
+            jc=jc[j]
+        else :
+            jc=[]
+            print 'no stars after parameters criterion'
+    except: pass
 
     # Remove badstars
+    if plot :
+        ax.cla()
+        plots.plotp(ax,data['J'][jf]-data['K'][jf],data['K'][jf],color='k',size=20,xr=[-0.5,1.5],yr=[15,6],facecolors='none',linewidth=1)
+        plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='g',size=30,xr=[-0.5,1.5],yr=[15,6])
     badstars = open(os.environ['IDLWRAP_DIR']+'/data/badcal.dat')
     bad = []
     for line in badstars :
@@ -280,6 +300,13 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
         #jc = [x for x in jc if data[x]['APOGEE_ID'] not in gcstars['id'][bd]]
         gd=np.where(gcstars['pop'] == 1)[0]
         jc = [x for x in jc if data[x]['APOGEE_ID'] in gcstars['id'][gd]]
+
+    if plot :
+        plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='b',size=30)
+        if hard is not None :
+            fig.savefig(hard+'/'+clust[ic].name[0]+'_cmd.jpg')
+        else :
+            pdb.set_trace()
 
     return jc
  
