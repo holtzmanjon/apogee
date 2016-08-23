@@ -1,11 +1,66 @@
 from holtz.apogee import apselect
 from holtz.tools import html
 from holtz.tools import match
+from holtz.tools import struct
 import os
 import shutil
 import pdb
+import glob
 import numpy as np
 from astropy.io import fits
+
+def allfield(files='apo*/*/apField-*.fits',out=None) :
+    '''
+    Concatenate set of apField (or other FITS table) files
+    '''
+    if type(files) == str:
+        files=[files]
+    allfiles=[]
+    for file in files :   
+        allfiles.extend(glob.glob(file))
+    all=concat(allfiles)
+
+    if out is not None:
+        struct.wrfits(all,out)
+
+    return all
+
+def calfile(files=['clust???/aspcapField-*.fits','cal???/aspcapField-*.fits'],nelem=15,out=None) :
+    '''
+    Concatenate aspcapField files, adding ELEM tags if not there
+    '''
+    if type(files) == str :
+        files=[files]
+    allfiles=[]
+    for file in files :
+        allfiles.extend(glob.glob(file))
+    all=concat(allfiles)
+    n=len(all)
+    try :
+        test=all['FELEM'][0]
+    except :
+        form='{:<d}f4'.format(nelem)
+        iform='{:<d}f4'.format(nelem)
+        all=struct.add_cols(all,np.zeros(n,dtype=[('FELEM',form),('FELEM_ERR',form),
+                                                  ('ELEM',form),('ELEM_ERR',form),('ELEMFLAG',iform)]))
+    if out is not None:
+        struct.wrfits(all,out)
+
+    return all
+
+def concat(files,hdu=1) :
+    '''
+    Create concatenation of all apField files
+    '''
+    for file in files :
+        print(file)
+        a=fits.open(file)[hdu].data
+        try:
+            all=struct.append(all,a)
+        except :
+            all=a
+        print len(all), len(a)
+    return all
 
 def calsample(indata,file=None,plot=True,clusters=True,apokasc='APOKASC_cat_v3.6.0',cal1m=True,galcen=True,lowext=True) :
     '''
@@ -80,6 +135,7 @@ def calsample(indata,file=None,plot=True,clusters=True,apokasc='APOKASC_cat_v3.6
         symlink(data[jc[i]],'cal/cal',i//nsplit)
 
     return jc
+
 
 def cleandir(out,n) :
     for i in range(n) : 

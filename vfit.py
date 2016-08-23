@@ -45,23 +45,30 @@ def fit_vmicro(file,mhrange=[-1,1],loggrange=[-1.,3.8],vrange=[0,4],maxerr=0.1, 
 
     # 1D plots a f(log g)
     fig,ax = plots.multi(2,3)
-    fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,0],ydata=mh[gd],log=True,xt='log g',yt='vmicro ([M/H])',yr=[-2.5,0.5])
-    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,1],ydata=teff[gd],log=True,xt='log g',yt='vmicro (teff)',yr=[3500,5500],pfit=fit1d)
-    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,0],ydata=meanfib[gd],log=True,xt='log g',yt='vmicro (meanfib)',yr=[0,300],pfit=fit1d)
-    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,1],ydata=vmacro[gd],log=True,xt='log g',yt='vmicro (vmacro)',yr=[0,300],pfit=fit1d)
-    dr13fit=models.Polynomial1D(degree=3)
-    dr13fit.parameters=[0.226,-0.0228,0.0297,-0.013]
-    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro')
+    fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,0],ydata=mh[gd],log=True,xt='log g',yt='vmicro ([M/H])',yr=[-2.5,0.5],colorbar=True,zt='[M/H]')
     # plot ALL points (even outside of fit range)
     plots.plotc(ax[0,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5])
 
-    # 2D plots a f(teff, logg)
-    fig,ax = plots.multi(1,2)
-    fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree,plot=ax[1])
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,1],ydata=teff[gd],log=True,xt='log g',yt='vmicro',yr=[3500,5500],pfit=fit1d,colorbar=True,zt='Teff')
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,0],ydata=meanfib[gd],log=True,xt='log g',yt='vmicro',yr=[0,300],pfit=fit1d,colorbar=True,zt='mean fiber')
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,1],ydata=10.**vmacro[gd],log=True,xt='log g',yt='vmicro',yr=[0,15],pfit=fit1d,colorbar=True,zt='vmacro')
+    # 2d plot
+    junk = fit.fit1d(logg, vmicro,degree=degree,reject=reject,plot=ax[2,0],plot2d=True,ydata=teff,log=True,yt='Teff',xt='log g',xr=[5,-0.5],yr=[6000,3000],pfit=fit1d,zr=[0,4])
 
+
+    # plot with DR13 relation
+    dr13fit=models.Polynomial1D(degree=3)
+    dr13fit.parameters=[0.226,-0.0228,0.0297,-0.013]
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro',colorbar=True,zt='[M/H]')
+
+    fig.tight_layout()
+
+    # 2D plots a f(teff, logg)
+    #fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree,plot=ax[2,0],yr=[5,0],xr=[6000,3500],xt='TTeff',yt='log g')
     #summary plots
     #plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
-    return fit1d, fit2d
+
+    return fit1d
 
 def fit_vmacro(file,mhrange=[-1.,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1,apokasc='APOKASC_cat_v3.6.0.fits') :
     """ 
