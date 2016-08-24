@@ -1,6 +1,6 @@
 from astropy.io import fits
 import os
-import sdss.apogee.download as download
+import holtz.apogee.download as download
 
 apred = 'r6'
 apstar = 'stars'
