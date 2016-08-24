@@ -9,41 +9,49 @@ import glob
 import numpy as np
 from astropy.io import fits
 
-def allfield(files='apo*/*/apField-*.fits',out=None) :
+def allField(files=['apo*/*/apField-*.fits','apo*/*/apFieldC-*.fits'],out='allField.fits') :
     '''
-    Concatenate set of apField (or other FITS table) files
+    Concatenate set of apField files
     '''
-    if type(files) == str:
-        files=[files]
-    allfiles=[]
-    for file in files :   
-        allfiles.extend(glob.glob(file))
-    all=concat(allfiles)
+    # concatenate the structures
+    all=struct.concat(files)
 
+    # write out the file
     if out is not None:
+        print('writing',out)
         struct.wrfits(all,out)
 
     return all
 
-def calfile(files=['clust???/aspcapField-*.fits','cal???/aspcapField-*.fits'],nelem=15,out=None) :
+def allCal(files=['clust???/aspcapField-*.fits','cal???/aspcapField-*.fits'],nelem=15,out='allCal.fits',allfield=None) :
     '''
     Concatenate aspcapField files, adding ELEM tags if not there
     '''
-    if type(files) == str :
-        files=[files]
-    allfiles=[]
-    for file in files :
-        allfiles.extend(glob.glob(file))
-    all=concat(allfiles)
-    n=len(all)
+    # concatenate the structures
+    all=struct.concat(files)
+
+    # add elements tags if we don't have them
     try :
         test=all['FELEM'][0]
     except :
+        n=len(all)
         form='{:<d}f4'.format(nelem)
         iform='{:<d}f4'.format(nelem)
         all=struct.add_cols(all,np.zeros(n,dtype=[('FELEM',form),('FELEM_ERR',form),
                                                   ('ELEM',form),('ELEM_ERR',form),('ELEMFLAG',iform)]))
+
+    # add in NINST information from allField file
+    if allfield is not None:
+        a=fits.open(allfield)[1].data
+        i1,i2=match.match(np.core.defchararray.add(all['APOGEE_ID'],all['LOCATION_ID'].astype(str)),
+                    np.core.defchararray.add(a['APOGEE_ID'],a['LOCATION_ID'].astype(str)))
+        n=len(all)
+        all=struct.add_cols(all,np.zeros(n,dtype=[('NINST','3i4')]))
+        all['NINST'][i1]=a['NINST'][i2]
+
+    # write out the file
     if out is not None:
+        print('writing',out)
         struct.wrfits(all,out)
 
     return all
@@ -52,6 +60,15 @@ def concat(files,hdu=1) :
     '''
     Create concatenation of all apField files
     '''
+    if type(files) == str:
+        files=[files]
+    allfiles=[]
+    for file in files :   
+        allfiles.extend(glob.glob(file))
+    if len(allfiles) == 0 :
+        print('no files found!',file)
+        return
+
     for file in files :
         print(file)
         a=fits.open(file)[hdu].data

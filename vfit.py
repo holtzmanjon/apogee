@@ -13,7 +13,7 @@ from holtz.tools import fit
 from holtz.tools import plots
 from holtz.tools import match
 
-def fit_vmicro(file,mhrange=[-1,1],loggrange=[-1.,3.8],vrange=[0,4],maxerr=0.1, degree=1,reject=0) :
+def fit_vmicro(file,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75],vrange=[0,4],vmrange=[0,6],maxerr=0.1, degree=1,reject=0) :
     """ 
     Fit microturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
 
@@ -33,27 +33,47 @@ def fit_vmicro(file,mhrange=[-1,1],loggrange=[-1.,3.8],vrange=[0,4],maxerr=0.1, 
     data=fits.open(file)[1].data
     vmicro = data['fparam'][:,2]
     vmacro = data['fparam'][:,7]
+    # fix locked vmacro by hand (bad!)
+    j=np.where(np.isclose(vmacro,1.))[0]
+    vmacro[j] = 0.6
     teff = data['fparam'][:,0]
     logg = data['fparam'][:,1]
     mh = data['fparam'][:,3]
     try :
-       meanfib = data['meanfib']
+        meanfib = data['meanfib']
     except :
-       meanfib = 0.*vmicro
+        meanfib = 0.*vmicro
+    try :
+        ninst= data['NINST'][:,1]-data['NINST'][:,2]
+    except :
+        ninst= data['NVISITS']*0
+
     gd = np.where((mh>mhrange[0]) & (mh<mhrange[1]) & (logg > loggrange[0]) & (logg < loggrange[1]) & 
+                  (teff>teffrange[0]) & (teff<teffrange[1]) & (10.**vmacro>vmrange[0]) & (10.**vmacro<vmrange[1]) &
                   (np.sqrt(data['fparam_cov'][:,2,2]) < maxerr) & (10.**vmicro < vrange[1]))[0]
 
+    # remove non-1st generation GC stars
+    gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
+    bd=np.where(gcstars['pop'] != 1)[0]
+    gd = [x for x in gd if data[x]['APOGEE_ID'] not in gcstars['id'][bd]]
+
     # 1D plots a f(log g)
-    fig,ax = plots.multi(2,3)
+    fig,ax = plots.multi(2,3,figsize=(12,12))
     fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,0],ydata=mh[gd],log=True,xt='log g',yt='vmicro ([M/H])',yr=[-2.5,0.5],colorbar=True,zt='[M/H]')
     # plot ALL points (even outside of fit range)
     plots.plotc(ax[0,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5])
 
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,1],ydata=teff[gd],log=True,xt='log g',yt='vmicro',yr=[3500,5500],pfit=fit1d,colorbar=True,zt='Teff')
+    plots.plotc(ax[0,1],logg,10.**vmicro,teff,zr=[3500,5500],xr=[-1,5])
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,0],ydata=meanfib[gd],log=True,xt='log g',yt='vmicro',yr=[0,300],pfit=fit1d,colorbar=True,zt='mean fiber')
+    plots.plotc(ax[1,0],logg,10.**vmicro,meanfib,zr=[0,300],xr=[-1,5])
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,1],ydata=10.**vmacro[gd],log=True,xt='log g',yt='vmicro',yr=[0,15],pfit=fit1d,colorbar=True,zt='vmacro')
+    plots.plotc(ax[1,1],logg,10.**vmicro,10.**vmacro,zr=[0,15],xr=[-1,5])
+
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,0],ydata=ninst[gd],log=True,xt='log g',yt='vmicro',yr=[-5,5],pfit=fit1d,colorbar=True,zt='ninst1-ninst2')
+    #plots.plotc(ax[3,1],logg[gd1],10.**vmicro[gd1],mh[gd1],zr=[-2.5,0.5],xr=[-1,5])
     # 2d plot
-    junk = fit.fit1d(logg, vmicro,degree=degree,reject=reject,plot=ax[2,0],plot2d=True,ydata=teff,log=True,yt='Teff',xt='log g',xr=[5,-0.5],yr=[6000,3000],pfit=fit1d,zr=[0,4])
+    #junk = fit.fit1d(logg, vmicro,degree=degree,reject=reject,plot=ax[2,0],plot2d=True,ydata=teff,log=True,yt='Teff',xt='log g',xr=[5,-0.5],yr=[6000,3000],pfit=fit1d,zr=[0,4])
 
 
     # plot with DR13 relation
