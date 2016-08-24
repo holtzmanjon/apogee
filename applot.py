@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pdb
-import sdss.apogee.apload as apload
+import holtz.apogee.apload as apload
 
 def plot1d(hd,row,erase=True,col=False,chip=True,pixel=False) :
   """

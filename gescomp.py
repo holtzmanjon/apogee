@@ -1,7 +1,7 @@
 # compares APOGEE and GES abundances for stars in common
 
-from sdss.apogee import apload
-from sdss.apogee import apselect
+from holtz.apogee import apload
+from holtz.apogee import apselect
 from astropy.io import fits
 from holtz.gal import isochrones
 from holtz.tools import match

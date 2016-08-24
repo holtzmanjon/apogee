@@ -3,7 +3,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from sdss.apogee import apload
+from holtz.apogee import apload
 from holtz.tools import match
 from holtz.tools import plots
 from astropy.io import fits

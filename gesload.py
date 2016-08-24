@@ -1,5 +1,5 @@
-from sdss.apogee import apload
-from sdss.apogee import apselect
+from holtz.apogee import apload
+from holtz.apogee import apselect
 from astropy.io import fits
 import pdb
 import numpy as np

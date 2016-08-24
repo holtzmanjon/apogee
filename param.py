@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from sdss.apogee import apload
-from sdss.apogee import apselect
+from holtz.apogee import apload
+from holtz.apogee import apselect
 from holtz.tools import plots
 from holtz.tools import html
 import pdb

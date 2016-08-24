@@ -1,6 +1,6 @@
 import os
 import numpy as np
-import sdss.apogee.apload as apload
+import holtz.apogee.apload as apload
 import pdb
 
 def location(fields) :
