@@ -1,6 +1,5 @@
 from astropy.io import fits
 import os
-import holtz.apogee.download as download
 from sdss_access.path import path
 from sdss_access.sync.http import HttpAccess
 
