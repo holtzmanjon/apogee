@@ -48,6 +48,11 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     j=np.where((allstar['GLAT']>glatmin)&(allstar['SFD_EBV']<ebvmax))[0]
     allstar=allstar[j]
 
+    # remove second gen GC stars
+    gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
+    bd=np.where(gcstars['pop'] != 1)[0]
+    j = [x for x in j if allstar[x]['APOGEE_ID'] not in gcstars['id'][bd]]
+
     # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
