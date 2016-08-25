@@ -9,52 +9,40 @@ import shutil
 import tempfile
 import subprocess
 import numpy
+import pdb
 
-from sdss.files import path
+from sdss_access.path import path
+from sdss_access.sync.http import HttpAccess
 
-_DR10_URL= 'http://data.sdss3.org/sas/dr10/apogee'
-_DR12_URL= 'http://data.sdss3.org/sas/dr12/apogee'
-_PROPRIETARY_URL= 'https://data.sdss.org/sas/apogeework/apogee'
 _MAX_NTRIES= 2
 _ERASESTR= "                                                                                "
 
 def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,location=None,obj=None,plate=None,mjd=None,num=None,telescope='apo25m',fiber=None,chips=False):
     """ download the allStar file """
-    sdss_path=path()
-   
-    # First make sure the file doesn't exist locally
-    filePath, relPath = sdss_path.full_relative(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
-    print(filePath, relPath)
-    if chips == False :
-        if os.path.exists(filePath): return filePath
+    sdss_path=path.Path()
+    http_access=HttpAccess(verbose=True)
+    http_access.remote()
 
-        # Create the remote file path
-        downloadPath = ( _base_url(dr=dr)+'/spectro/redux/'+ relPath)
-        _download_file(downloadPath,filePath,dr,verbose=True)
+    if chips == False :
+        # First make sure the file doesn't exist locally
+        filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
+        downloadPath = sdss_path.url(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
+        if os.path.exists(filePath) is False: 
+            http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
         return filePath
     else :
         for chip in ['a','b','c'] :
-            file = filePath.replace(root,root+'-'+chip)
-            if os.path.exists(file): 
-                pass
-            else :
-                # Create the remote file path
-                downloadPath = (_base_url(dr=dr)+'/spectro/redux/'+
-                                 relPath.replace(root,root+'-'+chip) )
-                _download_file(downloadPath,file,dr,verbose=True)
-        return filePath
-
-def _base_url(dr,rc=False):
-    if dr is None : return _PROPRIETARY_URL
-
-    if dr.upper() == 'DR10': return _DR10_URL
-    elif dr.upper() == 'DR12': return _DR12_URL
-    else: return _PROPRIETARY_URL
-
-def _dr_string(dr):
-    if dr == 'bosswork': return 'bosswork'
-    else: return 'dr%s' % dr
- 
+            filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
+                chip=chip)
+            if os.path.exists(filePath) is False: 
+                http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                    location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
+                chip=chip)
+        return filePath.replace('-c','')
 
 def _download_file(downloadPath,filePath,dr,verbose=True,spider=False):
 
