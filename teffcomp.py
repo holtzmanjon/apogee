@@ -3,6 +3,7 @@
 from holtz.apogee import apload
 from holtz.apogee import apselect
 from astropy.io import fits
+from astropy.io import ascii
 from holtz.gal import isochrones
 from holtz.gal import stars
 from holtz.tools import match
@@ -13,7 +14,6 @@ import pdb
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import astropy
 
 def bindata(xdata,ydata,bins) :
     """
@@ -46,12 +46,13 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
         gd=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],raw=True)
     allstar=allstar[gd]
     j=np.where((allstar['GLAT']>glatmin)&(allstar['SFD_EBV']<ebvmax))[0]
-    allstar=allstar[j]
 
     # remove second gen GC stars
     gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
     bd=np.where(gcstars['pop'] != 1)[0]
     j = [x for x in j if allstar[x]['APOGEE_ID'] not in gcstars['id'][bd]]
+
+    allstar=allstar[j]
 
     # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
@@ -73,6 +74,10 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],degree=2)
     plots.plotl(ax,x,pfit(x))
     print(pfit)
+    plots._data_x = allstar['FPARAM'][:,3]
+    plots._data_y = allstar['FPARAM'][:,0]-ghb
+    plots._data = allstar
+    plots.event(fig)
 
     # separate fits for low/hi alpha/M if requested
     if alpha :
