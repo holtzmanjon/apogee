@@ -79,7 +79,7 @@ def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_
     fig,ax=plots.multi(1,2,hspace=0.001)
 
     # put APOKASC underneath
-    apokasc=fits.open(apokasc)[1].data
+    apokasc=fits.open(os.environ['IDLWRAP_DIR']+'/data/'+apokasc)[1].data
     i1,i2=match.match(allstar['APOGEE_ID'],apokasc['2MASS_ID'])
     plots.plotc(ax[0],allstar['FPARAM'][i1,3],allstar['FPARAM'][i1,1]-apokasc['LOGG_SYD_SCALING'][i2],allstar['FPARAM'][i1,0],zr=zr)
     plots.plotc(ax[1],allstar['PARAM'][i1,3],allstar['PARAM'][i1,1]-apokasc['LOGG_SYD_SCALING'][i2],allstar['PARAM'][i1,0],zr=zr)
@@ -138,7 +138,7 @@ def dr13dr12() :
     '''
     ASPCAP compared with physical and asteroseismic log g, DR13/DR12/l30i
     '''
-    apokasc=fits.open('APOKASC_cat_v3.6.0.fits')[1].data
+    apokasc=fits.open(os.environ['IDLWRAP_DIR']+'/data/'+apokasc)[1].data
     j=np.where(apokasc['LOGG_SYD_SCALING'] > -1)[0]
     apokasc=apokasc[j]
 
@@ -206,7 +206,7 @@ def kurucz_marcs(logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits') :
     asteroseismic log g comparisons for Kurucz and MARCS results
     '''
     # read APOKASC
-    apokasc=fits.open(apokasc)[1].data
+    apokasc=fits.open('APOKASC_cat_v3.6.0.fits')[1].data
     #j=np.where((apokasc['TEFF_FIT'] < 4000) & (apokasc[logg] > -500))[0]
     #j=np.where((apokasc['CONS_EVSTATES'] == 'RGB'))[0]
     #apokasc=apokasc[j]
