@@ -10,7 +10,8 @@ import tempfile
 import subprocess
 import numpy
 
-from sdss.files import path
+#from sdss.files import path
+from sdss_access.path import path
 
 _DR10_URL= 'http://data.sdss3.org/sas/dr10/apogee'
 _DR12_URL= 'http://data.sdss3.org/sas/dr12/apogee'
