@@ -1,3 +1,4 @@
+from __future__ import print_function
 from astropy.io import fits
 from astropy.io import ascii
 from astropy.modeling import models, fitting
@@ -61,16 +62,17 @@ def fit_vmicro(file,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     fig,ax = plots.multi(2,3,figsize=(12,12))
     fit1d = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,0],ydata=mh[gd],log=True,xt='log g',yt='vmicro ([M/H])',yr=[-2.5,0.5],colorbar=True,zt='[M/H]')
     # plot ALL points (even outside of fit range)
-    plots.plotc(ax[0,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5])
+    plots.plotc(ax[0,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5],size=1)
 
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[0,1],ydata=teff[gd],log=True,xt='log g',yt='vmicro',yr=[3500,5500],pfit=fit1d,colorbar=True,zt='Teff')
-    plots.plotc(ax[0,1],logg,10.**vmicro,teff,zr=[3500,5500],xr=[-1,5])
+    plots.plotc(ax[0,1],logg,10.**vmicro,teff,zr=[3500,5500],xr=[-1,5],size=1)
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,0],ydata=meanfib[gd],log=True,xt='log g',yt='vmicro',yr=[0,300],pfit=fit1d,colorbar=True,zt='mean fiber')
-    plots.plotc(ax[1,0],logg,10.**vmicro,meanfib,zr=[0,300],xr=[-1,5])
+    plots.plotc(ax[1,0],logg,10.**vmicro,meanfib,zr=[0,300],xr=[-1,5],size=1)
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[1,1],ydata=10.**vmacro[gd],log=True,xt='log g',yt='vmicro',yr=[0,15],pfit=fit1d,colorbar=True,zt='vmacro')
-    plots.plotc(ax[1,1],logg,10.**vmicro,10.**vmacro,zr=[0,15],xr=[-1,5])
+    plots.plotc(ax[1,1],logg,10.**vmicro,10.**vmacro,zr=[0,15],xr=[-1,5],size=1)
 
     junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,0],ydata=ninst[gd],log=True,xt='log g',yt='vmicro',yr=[-1,1],pfit=fit1d,colorbar=True,zt='ninst1-ninst2')
+    plots.plotc(ax[2,0],logg,10.**vmicro,ninst,zr=[-1,1],xr=[-1,5],size=1)
     #plots.plotc(ax[3,1],logg[gd1],10.**vmicro[gd1],mh[gd1],zr=[-2.5,0.5],xr=[-1,5])
     # 2d plot
     #junk = fit.fit1d(logg, vmicro,degree=degree,reject=reject,plot=ax[2,0],plot2d=True,ydata=teff,log=True,yt='Teff',xt='log g',xr=[5,-0.5],yr=[6000,3000],pfit=fit1d,zr=[0,4])
@@ -79,7 +81,8 @@ def fit_vmicro(file,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     # plot with DR13 relation
     dr13fit=models.Polynomial1D(degree=3)
     dr13fit.parameters=[0.226,-0.0228,0.0297,-0.013]
-    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro',colorbar=True,zt='[M/H]')
+    junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,reject=reject,plot=ax[2,1],ydata=mh[gd],pfit=dr13fit,log=True,xt='log g',yt='vmicro',colorbar=True,zt='[M/H]',yr=[-2.5,0.5])
+    plots.plotc(ax[2,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5],size=1)
 
     fig.tight_layout()
 
@@ -87,6 +90,11 @@ def fit_vmicro(file,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     #fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree,plot=ax[2,0],yr=[5,0],xr=[6000,3500],xt='TTeff',yt='log g')
     #summary plots
     #plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
+
+    print('{',end="")
+    for i in range(degree)+1 :
+        print('{:10.6f}'.format(fit1d.parameters[i]),end="")
+    print('}')
 
     return fit1d
 
