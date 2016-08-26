@@ -98,7 +98,7 @@ def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-
        bad = np.zeros(len(data),dtype=np.int8)
 
     try :
-       snr = data.SNR
+       snr = data['SNR']
     except :
        snr = data['SNR_2']
 
@@ -108,17 +108,17 @@ def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-
          (g > logg[0]) & (g < logg[1])  &
          (m > mh[0]) & (m < mh[1])  &
          (a > alpha[0]) & (a < alpha[1])  &
-         (data.GLON > glon[0]) & (data.GLON < glon[1])  &
-         (data.GLAT > glat[0]) & (data.GLAT < glat[1])  &
+         (data['GLON'] > glon[0]) & (data['GLON'] < glon[1])  &
+         (data['GLAT'] > glat[0]) & (data['GLAT'] < glat[1])  &
          (snr > sn[0]) & (snr < sn[1])  
          )[0]
 
     if grid is not None :
-        gdclass = np.where(np.core.defchararray.find(data.ASPCAP_CLASS[gd],grid) >=0 )[0]
+        gdclass = np.where(np.core.defchararray.find(data['ASPCAP_CLASS'][gd],grid) >=0 )[0]
         gd=gd[gdclass]
 
     if field is not None :
-        gdfield = np.where(np.core.defchararray.strip(data.FIELD[gd]) ==field)[0]
+        gdfield = np.where(np.core.defchararray.strip(data['FIELD'][gd]) ==field)[0]
         gd=gd[gdfield]
 
     return gd
