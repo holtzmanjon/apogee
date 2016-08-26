@@ -14,7 +14,7 @@ def allField(files=['apo*/*/apField-*.fits','apo*/*/apFieldC-*.fits'],out='allFi
     Concatenate set of apField files
     '''
     # concatenate the structures
-    all=struct.concat(files)
+    all=struct.concat(files,verbose=False)
 
     # write out the file
     if out is not None:
@@ -28,7 +28,7 @@ def allCal(files=['clust???/aspcapField-*.fits','cal???/aspcapField-*.fits'],nel
     Concatenate aspcapField files, adding ELEM tags if not there
     '''
     # concatenate the structures
-    all=struct.concat(files)
+    all=struct.concat(files,verbose=False)
 
     # add elements tags if we don't have them
     try :
