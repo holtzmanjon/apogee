@@ -4,7 +4,81 @@ from holtz.tools import plots
 from holtz.tools import match
 from holtz.apogee import aspcap
 
-def readferrespec(name) :
+def writespec(name,data) :
+    '''
+    Creates a directory with FERRE input files from apStars in filelist
+    '''
+    f=open(name,'w')
+    for line in np.arange(data.shape[1]) :
+        spec=np.array(line.split())
+        spec=spec.astype(float)
+        data.append(spec)
+    return np.array(data)
+
+
+def writeferre() :
+    '''
+    Writes FERRE control file
+    '''
+
+def read(name,libfile) :
+    '''
+    Read all of the FERRE files associated with a FERRE run
+    '''
+    # get library headers and load wavelength array
+    libhead0, libhead=rdlibhead(libfile)
+    wave=[]
+    for ichip in range(len(libhead)) :
+        wave.extend(libhead[ichip]['WAVE'][0] + np.arange(libhead[ichip]['NPIX'])*libhead[ichip]['WAVE'][1])
+    wave=np.array(wave)
+    nwave=len(wave)
+    nparam=libhead0['N_OF_DIM']
+
+    # input ipf and output spm files, match object names
+    ipfobj,ipf=readferredata(name+'.ipf')
+    spmobj,spm=readferredata(name+'.spm')
+    i1,i2=match.match(ipfobj,spmobj)
+    nobj=len(ipfobj)
+    param=spm[:,0:nparam]
+    paramerr=spm[:,nparam:2*nparam]
+    chi2=10.**spm[:,2*nparam+2]
+    covar=spm[:,2*nparam+3:2*nparam+3+nparam**2]
+    covar=np.reshape(covar,(nobj,nparam,nparam))
+
+    # load param array
+    params=aspcap.params()[0]
+    ntotparams=len(params)
+    index=np.zeros(ntotparams,dtype=int)
+    a=np.zeros(nobj, dtype=[('APOGEE_ID','S100'),
+                              ('FPARAM','f4',(ntotparams)),
+                              ('FPARAM_COV','f4',(ntotparams,ntotparams)),
+                              ('PARAM_CHI2','f4')])
+    a['APOGEE_ID']=ipfobj
+    for i in range(ntotparams) :
+        try :
+            index[i] = np.where(libhead0['LABEL'] == params[i])[0]
+            a['FPARAM'][:,i] = param[:,index[i]]
+            for j in range(ntotparams) :
+                a['FPARAM_COV'][:,i,j]=covar[:,index[i],index[j]]
+        except :
+            index[i] = -1
+    a['PARAM_CHI2']=chi2
+    pdb.set_trace()
+
+    # put it all into a structured array
+    form='{:d}f4'.format(nwave)
+    sform='{:d}f4'.format(spm.shape[1])
+    out=np.empty(nobj, dtype=[('obj','S24'),('spm',sform),('obs',form),('err',form),('mdl',form),('chi2',form)])
+    out['obj']=ipfobj
+    out['spm'][i1,:]=spm[i2,:]
+    out['obs']=readspec(name+'.frd')[i2,:]
+    out['err']=readspec(name+'.err')[i2,:]
+    out['mdl']=readspec(name+'.mdl')[i2,:]
+    out['chi2']=(out['obs']-out['mdl'])**2/out['err']**2
+
+    return a,out,wave
+
+def readspec(name) :
     '''
     Read a single file with FERRE-format spectra, and return as 2D array [nspec,nwave]
     '''
@@ -32,60 +106,6 @@ def readferredata(name) :
         allobj.append(obj)
     return np.array(allobj),np.array(alldata)
 
-def read(name,libfile) :
-    '''
-    Read all of the FERRE files associated with a FERRE run
-    '''
-    # get library headers and load wavelength array
-    libhead0, libhead=rdlibhead(libfile)
-    wave=[]
-    for ichip in range(len(libhead)) :
-        wave.append(libhead[ichip]['WAVE'][0] + np.arange(libhead[ichip]['NPIX'])*libhead[ichip]['WAVE'][1])
-    nwave=len(wave)
-    nparam=libhead0['N_OF_DIM']
-
-    # input ipf and output spm files, match object names
-    ipfobj,ipf=readferredata(name+'.ipf')
-    spmobj,spm=readferredata(name+'.spm')
-    i1,i2=match.match(ipfobj,spmobj)
-    nobj=len(ipfobj)
-    param=spm[:,0:nparam]
-    paramerr=spm[:,nparam:2*nparam]
-    chi2=10.**spm[:,2*nparam+2]
-    covar=spm[:,2*nparam+3:2*nparam+3+nparam**2]
-    covar=np.reshape(covar,(nobj,nparam,nparam))
-
-    # load param array
-    params=aspcap.params()[0]
-    ntotparams=len(params)
-    index=np.zeros(ntotparams,dtype=int)
-    out=np.zeros(nobj, dtype=[('APOGEE_ID','S24'),
-                              ('FPARAM','f4',(ntotparams)),
-                              ('FPARAM_COV','f4',(ntotparams,ntotparams)),
-                              ('PARAM_CHI2','f4')])
-    for i in range(ntotparams) :
-        try :
-            index[i] = np.where(libhead0['LABEL'] == params[i])[0]
-            out['FPARAM'][:,i] = param[:,index[i]]
-            for j in range(ntotparams) :
-                out['FPARAM_COV'][:,i,j]=covar[:,index[i],index[j]]
-        except :
-            index[i] = -1
-    out['PARAM_CHI2']=chi2
-    pdb.set_trace()
-
-    # put it all into a structured array
-    form='{:d}f4'.format(nwave)
-    sform='{:d}f4'.format(spm.shape[1])
-    out=np.empty(nobj, dtype=[('obj','S24'),('spm',sform),('obs',form),('err',form),('mdl',form),('chi2',form)])
-    out['obj']=ipfobj
-    out['spm'][i1,:]=spm[i2,:]
-    out['obs']=readferrespec(name+'.frd')[i2,:]
-    out['err']=readferrespec(name+'.err')[i2,:]
-    out['mdl']=readferrespec(name+'.mdl')[i2,:]
-    out['chi2']=(out['obs']-out['mdl'])**2/out['err']**2
-
-    return wave,out
 
 def rdsinglehead(f) :
     '''
@@ -134,6 +154,12 @@ def rdsinglehead(f) :
     return dict
 
 def rdlibhead(name) :
+    '''
+    Read a full FERRE library header with multi-extensions
+
+    Returns:
+       libstr, libstr : first header, then list of extension headers; headers returned as dictionaries
+    '''
     try:
         f=open(name,'r')
     except:
