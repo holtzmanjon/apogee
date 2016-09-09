@@ -409,9 +409,10 @@ def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,locatio
             filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
                 chip=chip)
+            print filePath
             if os.path.exists(filePath) is False: 
                 http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                     location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
-                chip=chip)
+                    chip=chip)
         return filePath.replace('-c','')
 
