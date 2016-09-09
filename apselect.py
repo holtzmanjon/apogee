@@ -216,20 +216,20 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
         return []
 
     # adjust ra for wraparound if needed
-    ra=copy.copy(data['ra'])
+    ra=copy.copy(data['RA'])
     if clust[ic].ra > 300 :
-        j=np.where(data['ra'] < 180)[0]
+        j=np.where(data['RA'] < 180)[0]
         ra[j]+=360
     if clust[ic].ra < 60 :
-        j=np.where(data['ra'] > 180)[0]
+        j=np.where(data['RA'] > 180)[0]
         ra[j]-=360
 
     # select by location relative to cluster
     jc=np.where((np.abs(ra-clust[ic].ra)*np.cos(clust[ic].dec*np.pi/180.) < clust[ic].rad/60.) & 
-                (np.abs(data['dec']-clust[ic].dec) < clust[ic].rad/60.))[0]
+                (np.abs(data['DEC']-clust[ic].dec) < clust[ic].rad/60.))[0]
     if len(jc) > 0 :
         j=np.where( ((ra[jc]-clust[ic].ra)*np.cos(clust[ic].dec*np.pi/180.))**2+ 
-                     (data[jc]['dec']-clust[ic].dec)**2 < (clust[ic].rad/60.)**2)[0]
+                     (data[jc]['DEC']-clust[ic].dec)**2 < (clust[ic].rad/60.)**2)[0]
         jc=jc[j]
     else :
         print 'no stars after location criterion'
@@ -248,9 +248,9 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
 
     # RV criterion
     try :
-        vhelio = data['vhelio']
+        vhelio = data['VHELIO']
     except :
-        vhelio = data['vhelio_avg']
+        vhelio = data['VHELIO_AVG']
     j=np.where(np.abs(vhelio[jc]-clust[ic].rv) < clust[ic].drv)[0]
     if plot :
         ax.cla() 
