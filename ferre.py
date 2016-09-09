@@ -6,20 +6,49 @@ from holtz.apogee import aspcap
 
 def writespec(name,data) :
     '''
-    Creates a directory with FERRE input files from apStars in filelist
+    Writes FERRE "spectrum" file with input data, one line per star
     '''
     f=open(name,'w')
-    for line in np.arange(data.shape[1]) :
-        spec=np.array(line.split())
-        spec=spec.astype(float)
-        data.append(spec)
-    return np.array(data)
+    for spec in data :
+        for pix in np.arange(spec.shape[0]) :
+            f.write('{:12.6f}'.format(spec[pix]))
+        f.write('\n')
+    f.close()
+    return 
 
 
 def writeferre() :
     '''
     Writes FERRE control file
     '''
+
+def writeipf(name,libfile,stars,param=None) :
+    '''
+    Writes FERRE input file
+    '''
+    # get library headers and load wavelength array
+    libhead0, libhead=rdlibhead(libfile)
+
+    params=aspcap.params()[0]
+    nparams=libhead0['N_OF_DIM']
+    # get the index numbers in input parameter array for correct library parameter order
+    index=np.zeros(nparams,dtype=int)
+    for i in range(nparams) :
+        index[i] = np.where(params == libhead0['LABEL'][i])[0]
+    # if input parameters aren't specified, use zeros
+    if param is None :
+        param=np.zeros(len(params))
+    # write the IPF file
+    f=open(name+'.ipf','w')
+    i=0
+    for star in stars :
+        f.write('{:<40s}'.format(star))
+        for ipar in range(nparams) : 
+            f.write('{:12.3f}'.format(param[i][index[ipar]]))
+        f.write('\n')
+        i+=1
+    f.close()
+        
 
 def read(name,libfile) :
     '''
@@ -30,7 +59,7 @@ def read(name,libfile) :
     wave=[]
     for ichip in range(len(libhead)) :
         wave.extend(libhead[ichip]['WAVE'][0] + np.arange(libhead[ichip]['NPIX'])*libhead[ichip]['WAVE'][1])
-    wave=np.array(wave)
+    wave=10.**np.array(wave)
     nwave=len(wave)
     nparam=libhead0['N_OF_DIM']
 
@@ -63,7 +92,6 @@ def read(name,libfile) :
         except :
             index[i] = -1
     a['PARAM_CHI2']=chi2
-    pdb.set_trace()
 
     # put it all into a structured array
     form='{:d}f4'.format(nwave)

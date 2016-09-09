@@ -45,7 +45,7 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     else :
         gd=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],raw=True)
     allstar=allstar[gd]
-    j=np.where((allstar['GLAT']>glatmin)&(allstar['SFD_EBV']<ebvmax))[0]
+    j=np.where((abs(allstar['GLAT'])>glatmin)&(allstar['SFD_EBV']<ebvmax))[0]
 
     # remove second gen GC stars
     gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
@@ -57,18 +57,18 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
-    yr=[-400,300]
+    yr=[-600,300]
     zr=[3500,5500]
     bins=np.arange(-2.5,0.75,0.25)
     # diff color-coded by gravity as f([M/H])
     ghb=stars.ghb(allstar['J']-allstar['K'],allstar['FPARAM'][:,3],dwarf=dwarf)
     if alpha :
-       plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,6],zr=[-0.1,0.4],xr=xr,yr=[-600,300],xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt=r'[$\alpha$/M]')
+        plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,6],zr=[-0.1,0.4],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt=r'[$\alpha$/M]')
     else :
         plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
     mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins)
     plots.plotp(ax,bins,mean,marker='o',size=40)
-    ax.text(0.1,0.9,'EBV<0.02',transform=ax.transAxes)
+    ax.text(0.1,0.9,'EBV<{:6.2f}'.format(ebvmax),transform=ax.transAxes)
     # 1D quadratic fit as a function of metallicity
     x=np.linspace(-3,1,200)
     pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],degree=2)
@@ -104,15 +104,17 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     fig,ax=plots.multi(2,2,hspace=0.001,wspace=0.001)
     plots.plotc(ax[0,0],allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,1],zr=[0,5],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='log g')
     plots.plotc(ax[0,1],allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,meanfib,zr=[0,300],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='mean fiber')
+    pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000],colorbar=True,zt='Teff')
+    pfit = fit.fit1d(allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5],colorbar=True,zt='[M/H]')
     fig.tight_layout()
    
     # do some test 2D and 1D fits and plots 
-    fig,ax=plots.multi(2,2,hspace=0.5,wspace=0.001)
-    ax[0,1].xaxis.set_visible(False)
-    ax[0,1].yaxis.set_visible(False)
-    pfit = fit.fit2d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,plot=ax[0,0],zr=[-500,200],xt='[M/H]',yt=['Teff'],zt='$\Delta Teff$')
-    pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000])
-    pfit = fit.fit1d(allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5])
+    #fig,ax=plots.multi(2,2,hspace=0.5,wspace=0.001)
+    #ax[0,1].xaxis.set_visible(False)
+    #ax[0,1].yaxis.set_visible(False)
+    #pfit = fit.fit2d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,plot=ax[0,0],zr=[-500,200],xt='[M/H]',yt=['Teff'],zt='$\Delta Teff$')
+    #pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000])
+    #pfit = fit.fit1d(allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5])
     plt.draw()
 
 

@@ -114,7 +114,7 @@ def getstarflags() :
     tmp['descrip']=descrip 
     return tmp
 
-def getmaskvals() :
+def getpixmask() :
 
     flag=(['BADPIX','CRPIX','SATPIX','UNFIXABLE','BADDARK','BADFLAT','BADERR','NOSKY',
           'LITTROW_GHOST','PERSIST_HIGH','PERSIST_MED','PERSIST_LOW','SIG_SKYLINE','SIG_TELLURIC','NOT_ENOUGH_PSF',''])
@@ -169,6 +169,8 @@ def getflags(bitmask) :
         flags = getaspcapflags()
     elif bitmask.upper() == 'STARFLAG' :
         flags = getstarflags()
+    elif bitmask.upper() == 'PIXMASK' :
+        flags = getpixmask()
     return flags
 
 def val(bitmask,flag) :
