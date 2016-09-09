@@ -2,6 +2,7 @@ from astropy.io import fits
 import os
 from sdss_access.path import path
 from sdss_access.sync.http import HttpAccess
+import pdb
 
 apred = 'r6'
 apstar = 'stars'
@@ -374,8 +375,12 @@ def _readchip(file,root,hdu=None,tuple=None) :
         c.close()
         return data, header
 
-def _readhdu(file,hdu=None) :
-    print('Reading from file: ', file)
+def _readhdu(file,hdu=None,verbose=False) :
+    '''
+    internal routine for reading all HDU or specified HDU and returning data and header
+    '''
+    if verbose :
+        print('Reading from file: ', file)
     if hdu is None :
         fits.open(file)
         return fits.open(file)
@@ -398,9 +403,10 @@ def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,locatio
         # First make sure the file doesn't exist locally
         filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
-        downloadPath = sdss_path.url(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
-                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
+        print filePath
         if os.path.exists(filePath) is False: 
+            downloadPath = sdss_path.url(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
             http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
         return filePath
