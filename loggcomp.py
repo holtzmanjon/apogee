@@ -28,13 +28,17 @@ def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',ra
     notrc=np.where(apokasc['CONS_EVSTATES'][i2] != 'RC')[0]
 
     # Do a 2D fit for RGB stars
-    ax=plots.ax()
-    newfit = fit.fit2d(allstar['FPARAM'][i1[notrc],3],allstar['FPARAM'][i1[notrc],1],
-        allstar['FPARAM'][i1[notrc],1]-apokasc[logg][i2[notrc]],zr=[-1,0.5],gdrange=[-2,2],xr=[-3,1],yr=[1,4],degree=2,plot=ax)
-    pdb.set_trace()
+    fig,ax=plots.multi(2,1,figsize=(12,6))
+    rgbfit = fit.fit2d(allstar['FPARAM'][i1[rgb],3],allstar['FPARAM'][i1[rgb],1],
+        allstar['FPARAM'][i1[rgb],1]-apokasc[logg][i2[rgb]],zr=[-1,0.5],gdrange=[-2,2],xr=[-3,1],yr=[1,4],degree=2,
+        plot=ax[0],xt='[M/H]',yt='log g',zt='$\Delta log g$')
+    rcfit = fit.fit2d(allstar['FPARAM'][i1[rc],3],allstar['FPARAM'][i1[rc],1],
+        allstar['FPARAM'][i1[rc],1]-apokasc[logg][i2[rc]],zr=[-1,0.5],gdrange=[-2,2],xr=[-3,1],yr=[1,4],degree=2,
+        plot=ax[1],xt='[M/H]',yt='log g',zt='$\Delta log g$')
+    fig.tight_layout()
 
     # set up plots
-    fig,ax=plots.multi(2,3,hspace=0.5,wspace=0.001)
+    fig,ax=plots.multi(2,3,hspace=0.5,wspace=0.001,figsize=(12,12))
     if not raw or not cal :
         fig,tmpax=plots.multi(1,3,hspace=0.5,wspace=0.001)
         ax[:,0] = tmpax
@@ -55,12 +59,12 @@ def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',ra
         #   allstar['FPARAM'][i1[rgb],3],xr=[0,5],yr=[-1,1],xt='seismic log g',yt='corrected-raw log g',label=[0.1,0.9,'allstar (Kurucz)'],zr=[-2,0.5])
 
     if cal :
-        param=newfit(allstar['FPARAM'][i1[notrc],3],allstar['FPARAM'][i1[notrc],1])
-        plots.plotc(ax[0,1],allstar['FPARAM'][i1[notrc],3],allstar['FPARAM'][i1[notrc],1]-param-apokasc[logg][i2[notrc]],
-           allstar['FPARAM'][i1[notrc],1],zr=[0,5],xr=[-2.5,0.5],yr=[-1,1],xt='[M/H]',colorbar=True,zt='log g')
+        #param=newfit(allstar['FPARAM'][i1[notrc],3],allstar['FPARAM'][i1[notrc],1])
+        #plots.plotc(ax[0,1],allstar['FPARAM'][i1[notrc],3],allstar['FPARAM'][i1[notrc],1]-param-apokasc[logg][i2[notrc]],
+        #   allstar['FPARAM'][i1[notrc],1],zr=[0,5],xr=[-2.5,0.5],yr=[-1,1],xt='[M/H]',colorbar=True,zt='log g')
 
-        #plots.plotc(ax[0,1],allstar['PARAM'][i1,3],allstar['PARAM'][i1,1]-apokasc[logg][i2],
-        #   allstar['PARAM'][i1,1],zr=[0,5],xr=[-2.5,0.5],yr=[-1,1],xt='[M/H]',colorbar=True,zt='log g')
+        plots.plotc(ax[0,1],allstar['PARAM'][i1,3],allstar['PARAM'][i1,1]-apokasc[logg][i2],
+           allstar['PARAM'][i1,1],zr=[0,5],xr=[-2.5,0.5],yr=[-1,1],xt='[M/H]',colorbar=True,zt='log g')
         plots.plotc(ax[1,1],allstar['PARAM'][i1,1],allstar['PARAM'][i1,1]-apokasc[logg][i2],
            allstar['PARAM'][i1,3],xr=[0,5],zr=[-2.5,0.5],yr=[-1,1],zt='[M/H]',colorbar=True,xt='log g')
         plots.plotp(ax[2,1],allstar['PARAM'][i1[rgb],1],allstar['PARAM'][i1[rgb],1]-apokasc[logg][i2[rgb]],
@@ -69,8 +73,8 @@ def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',ra
            xr=[0,5],yr=[-1,1],xt='log g',color='b')
         #plots.plotc(ax[3,1],allstar['FPARAM'][i1[rc],1],allstar['PARAM'][i1[rc],1]-allstar['FPARAM'][i1[rc],1],
         #    allstar['FPARAM'][i1[rc],3],xr=[0,5],yr=[-1,1],xt='seismic log g',zr=[-2,0.5])
+    fig.tight_layout()
 
-    pdb.set_trace()
 
 def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_cat_v3.6.0.fits',firstgen=False) :
     '''
