@@ -25,7 +25,7 @@ def bindata(xdata,ydata,bins) :
       mean[i]=ydata[j].mean() 
     return mean
 
-def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False) :
+def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False,out='teffcomp') :
     """
     Compares allstar ASPCPAP Teff with photometric Teff from GHB for sample of stars with GLAT>glatmin and SFD_EBV<ebvmax,
     does fits
@@ -94,7 +94,7 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
         plots.plotl(ax,x,pfit(x))
         print('hi alpha: ', len(gdhi))
 
-    fig.savefig('teffcomp.png')
+    fig.savefig(out+'.jpg')
 
     # auxiliary plots with different color-codings
     try:
@@ -118,7 +118,7 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     plt.draw()
 
 
-def irfm(allstar,trange=[4000,5000],mhrange=[-2.5,0.75]) :
+def irfm(allstar,trange=[4000,5000],mhrange=[-2.5,0.75],out='dteff') :
     '''
     Compares allstar ASPCPAP Teff with various photometric Teff from JAJ compilation (SAGA, CL, TH, SFD)
     Does fits 
@@ -177,7 +177,7 @@ def irfm(allstar,trange=[4000,5000],mhrange=[-2.5,0.75]) :
     plots.plotp(ax[1,1],bins,mean,marker='o',size=40)
     ax[1,1].text(0.1,0.9,'SFD',transform=ax[1,1].transAxes)
 
-    fig.savefig('dteff_mh.jpg')
+    fig.savefig(out+'_mh.jpg')
 
     # plot diff color-coded by gravity as f([M/H])
     fig,ax=plots.multi(2,2,hspace=0.001,wspace=0.001)
@@ -210,7 +210,7 @@ def irfm(allstar,trange=[4000,5000],mhrange=[-2.5,0.75]) :
     plots.plotp(ax[1,1],bins,mean,marker='o',size=40)
     ax[1,1].text(0.1,0.9,'SFD',transform=ax[1,1].transAxes)
 
-    fig.savefig('dteff_teff.jpg')
+    fig.savefig(out+'_teff.jpg')
 
     # do 2D fits with Teff and [M/H], and 1D fits with each
 

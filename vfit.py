@@ -15,7 +15,7 @@ from holtz.tools import plots
 from holtz.tools import match
 from holtz.apogee import flag
 
-def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75],vrange=[0,4],vmrange=[0,6],maxerr=0.1, degree=1,reject=0,apokasc='APOKASC_cat_v3.6.0.fits') :
+def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75],vrange=[0,4],vmrange=[0,6],maxerr=0.1, degree=1,reject=0,apokasc='APOKASC_cat_v3.6.0.fits',nopersist=False,out='vmicro') :
     """ 
     Fit microturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
 
@@ -26,7 +26,7 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
         degree : degree of fit (default=1)
         mhrange : range of [M/H] (default=[-1,1])
         loggrange : range of log g (default=[-1,3.8])
-        maxerr : maximum uncertainy in vmicro
+        maxerr : maximum uncertainty in vmicro
         vrange  : scaling range for vmacro plot, vrange[1] sets maximum good vmacro
 
     Returns:
@@ -57,9 +57,19 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     type[i1[rgb]]=1
     type[i1[rc]]=-1
 
+    print('mhrange: ', mhrange)
+    print('teffrange: ', teffrange)
+    print('loggrange: ', loggrange)
+    print('vrange: ', vrange)
+    print('maxerr: ', maxerr)
+    print('nopersist: ', nopersist)
+    print('reject: ', reject)
     gd = np.where((mh>mhrange[0]) & (mh<mhrange[1]) & (logg > loggrange[0]) & (logg < loggrange[1]) & 
                   (teff>teffrange[0]) & (teff<teffrange[1]) & (10.**vmacro>vmrange[0]) & (10.**vmacro<vmrange[1])  &
                   (np.sqrt(data['FPARAM_COV'][:,2,2]) < maxerr) & (10.**vmicro > vrange[0]) & (10.**vmicro < vrange[1]))[0]
+    if nopersist :
+        j = np.where ((data['STARFLAG'][gd] & flag.persist()) == 0)[0]
+        gd=gd[j]
 
     # remove non-1st generation GC stars
     gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
@@ -95,7 +105,7 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     #plots.plotc(ax[2,0],logg,10.**vmicro,mh,zr=[-2.5,0.5],xr=[-1,5],size=1)
 #
     fig.tight_layout()
-    fig.savefig('vmicro.jpg')
+    fig.savefig(out+'.jpg')
 
     #fig,ax=plots.multi(1,2)
     #xr=[
@@ -114,7 +124,7 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
 
     return fit1d
 
-def fit_vmacro(data,mhrange=[-1.,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1,maxerr=0.1,apokasc='APOKASC_cat_v3.6.0.fits',persist=True, reject=0) :
+def fit_vmacro(data,teffrange=[3550,5500],mhrange=[-2.5,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1,maxerr=0.1,apokasc='APOKASC_cat_v3.6.0.fits',nopersist=False, reject=0,out='vmacro') :
     """ 
     Fit macroturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
 
@@ -140,9 +150,16 @@ def fit_vmacro(data,mhrange=[-1.,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1
        meanfib = data['MEANFIB']
     except :
        meanfib = 0.*vmicro
+    print('mhrange: ', mhrange)
+    print('loggrange: ', loggrange)
+    print('vrange: ', vrange)
+    print('maxerr: ', maxerr)
+    print('nopersist: ', nopersist)
+    print('reject: ', reject)
     gd = np.where((mh>mhrange[0]) & (mh<mhrange[1]) & (logg > loggrange[0]) & (logg < loggrange[1]) & (10.**vmacro < vrange[1]) &
-                  (np.sqrt(data['FPARAM_COV'][:,7,7]) < maxerr) )[0]
-    if persist :
+                  (teff>teffrange[0]) & (teff<teffrange[1]) &
+                  (np.sqrt(data['FPARAM_COV'][:,7,7]) < maxerr) ) [0]
+    if nopersist :
         j = np.where ((data['STARFLAG'][gd] & flag.persist()) == 0)[0]
         gd=gd[j]
 
@@ -161,34 +178,47 @@ def fit_vmacro(data,mhrange=[-1.,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1
     type[i1[rgb]]=1
     type[i1[rc]]=-1
 
-    fig,ax=plots.multi(2,2,figsize=(15,10))
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,0],xt='log g', yt='vmacro',ydata=mh[gd],colorbar=True,zt='[M/H]',reject=reject)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='log g', yt='vmacro',ydata=teff[gd],colorbar=True,zt='Teff',reject=reject)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,0],xt='log g', yt='vmacro',ydata=meanfib[gd],colorbar=True,zt='mean fib',reject=reject)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,1],xt='log g', yt='vmacro',ydata=type[gd],colorbar=True,zt='RGB/RC',reject=reject)
+    fig,ax=plots.multi(2,2,figsize=(12,8))
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,0],xt='log g', yt='vmacro',ydata=mh[gd],colorbar=True,zt='[M/H]',reject=reject,log=True)
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='log g', yt='vmacro',ydata=teff[gd],colorbar=True,zt='Teff',reject=reject,log=True)
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,0],xt='log g', yt='vmacro',ydata=meanfib[gd],colorbar=True,zt='mean fib',reject=reject,log=True)
+    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,1],xt='log g', yt='vmacro',ydata=type[gd],colorbar=True,zt='RGB/RC',reject=reject,log=True)
     fig.tight_layout()
-    fig.savefig('vmacro.jpg')
+    fig.savefig(out+'.jpg')
 
-    fig,ax=plots.multi(1,2)
-    fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0],xt='log g', yt='[M/H]',zt='log(vmacro)',reject=reject)
+    #fig,ax=plots.multi(1,2)
+    fig,ax=plots.multi(2,2,figsize=(12,8))
+    print('2D logg, mh')
+    fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0,0],xt='log g', yt='[M/H]',zt='log(vmacro)',reject=reject,zr=[0,15],log=True)
+    parprint([fit2d.parameters[0],0.,fit2d.parameters[1],fit2d.parameters[2]])
+    print('2D teff, logg')
+    fit2d_b = fit.fit2d(teff[gd], logg[gd], vmacro[gd],degree=degree,plot=ax[1,0],xt='Teff', yt='log g',zt='log(vmacro)',reject=reject,xr=[6000,3000],yr=[5,-1],zr=[0,15],log=True)
+    parprint([fit2d_b.parameters[0],fit2d_b.parameters[1],fit2d_b.parameters[2],0.])
+    print('2D teff, [M/H]')
+    fit2d_c = fit.fit2d(teff[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='Teff', yt='[M/H]',zt='log(vmacro)',reject=reject,zr=[0,15],log=True)
+    parprint([fit2d_c.parameters[0],fit2d_c.parameters[1],0.,fit2d_c.parameters[2]])
+    plots.plotc(ax[1,1],teff[gd],logg[gd],10.**vmacro[gd],xr=[6000,3000],yr=[5,-1],xt='Teff',yt='log g', zr=[0,15])
     # DR13 fit 
-    dr13fit=models.Polynomial2D(degree=1)
-    dr13fit.parameters=[0.741,-0.0998,-0.225]
-    junk = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[1],xt='log g', yt='[M/H]',zt='log(vmacro)',pfit=dr13fit)
+    #dr13fit=models.Polynomial2D(degree=1)
+    #dr13fit.parameters=[0.741,-0.0998,-0.225]
+    #junk = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[1],xt='log g', yt='[M/H]',zt='log(vmacro)',pfit=dr13fit)
     fig.tight_layout()
-    fig.savefig('vmacro2d.jpg')
+    fig.savefig(out+'_2d.jpg')
     #pdb.set_trace()
     #plot(teff, logg, mh, meanfib, vmacro, vrange, fit1d, fit2d, vt='vmacro')
-    print('{',end="")
-    print('{:10.6f}'.format(fit2d.parameters[0]),end="")
-    print('{:10.6f}'.format(0.),end="")
-    print('{:10.6f}'.format(fit2d.parameters[1]),end="")
-    print('{:10.6f}'.format(fit2d.parameters[2]),end="")
-    print('}')
-
     return fit1d, fit2d
 
-def litplot(mass=1, feh=0) : 
+def parprint(par) :
+
+    print('{',end="")
+    print('{:10.6f}'.format(par[0]),end="")
+    print('{:10.6f}'.format(par[1]),end="")
+    print('{:10.6f}'.format(par[2]),end="")
+    print('{:10.6f}'.format(par[3]),end="")
+    print('}')
+
+
+def litplot(mass=1, feh=0, out='litvmacro') : 
     '''
     Plots literature vmacro relations
     '''
@@ -205,11 +235,23 @@ def litplot(mass=1, feh=0) :
     # setup plots
     mpl.rcParams['xtick.labelsize'] = 8
     mpl.rcParams['ytick.labelsize'] = 8
-    p=plt.figure()
 
     p,ax=plots.multi(2,2)
     lw=0
+    ax[0,0].set_title('Massarotti vmacro')
+    ax[1,0].set_title('Shetrone vmacro')
+    ax[0,1].set_title('Bergemann vmacro')
+    ax[1,1].set_title('Bergemann vmacro new')
 
+    # L = 4*pi*R^2*sigma*Teff^4
+    # R^2 = L / (4 pi sigma Teff^4)
+    # log R^2 = log L - log (4*pi*sigma) - 4 logte
+    # logg = log G + log M - log L + log(4*pi*sigma) + 4 log te
+    sigma=const.sigma_sb.cgs.value
+    G=const.G.cgs.value
+    lsun=const.L_sun.cgs.value
+    msun=const.M_sun.cgs.value
+    m=mass*msun
     # get isochrone data
     for iso in [0.,-1.,-2.] :
         if iso >=0 : 
@@ -225,55 +267,43 @@ def litplot(mass=1, feh=0) :
         iso_te=10.**a['col6'][j]
         iso_logg=a['col7'][j]
         iso_feh=iso_logg*0.+iso
+        iso_logl=4*np.log10(iso_te)-iso_logg-np.log10(lsun)+np.log10(4*np.pi*sigma*G)+np.log10(m)
 
-        vm=vmacro_massarotti(iso_te,iso_logg,iso_feh)
-        plots.plotc(ax[0,0],iso_te,iso_logg,vm,xr=[7500,2500],yr=[5,-1.],zr=[0,10],linewidth=lw,size=15)
-        vm=vmacro_shetrone(iso_te,iso_logg,iso_feh)
-        plots.plotc(ax[1,0],iso_te,iso_logg,vm,xr=[7500,2500],yr=[5,-1.],zr=[0,10],linewidth=lw,size=15)
+        vm=vmacro_massarotti(iso_te,iso_logl,iso_feh)
+        plots.plotc(ax[0,0],iso_te,iso_logg,vm,xr=[6000,3000],yr=[5,-1.],zr=[0,15],linewidth=lw,size=15)
+        vm=vmacro_shetrone(iso_te,iso_logl,iso_feh)
+        plots.plotc(ax[1,0],iso_te,iso_logg,vm,xr=[6000,3000],yr=[5,-1.],zr=[0,15],linewidth=lw,size=15)
         vm=vmacro_bergemann(iso_te,iso_logg,iso_feh)
-        plots.plotc(ax[0,1],iso_te,iso_logg,vm,xr=[7500,2500],yr=[5,-1.],zr=[0,10],linewidth=lw,size=15)
+        plots.plotc(ax[0,1],iso_te,iso_logg,vm,xr=[6000,3000],yr=[5,-1.],zr=[0,15],linewidth=lw,size=15)
         vm=vmacro_bergemann_new(iso_te,iso_logg,iso_feh)
-        plots.plotc(ax[1,1],iso_te,iso_logg,vm,xr=[7500,2500],yr=[5,-1.],zr=[0,10],linewidth=lw,size=15)
+        plots.plotc(ax[1,1],iso_te,iso_logg,vm,xr=[6000,3000],yr=[5,-1.],zr=[0,15],linewidth=lw,size=15)
 
 
     # setup grids for Teff and logg
-    o=np.ones([61,51])
-    teff=o*(np.arange(51)*100.)+2500
+    o=np.ones([61,31])
+    teff=o*(np.arange(31)*100.)+3000
     logg=np.transpose(np.transpose(o)*(np.arange(61)*.1))-1.
     feh=o*0.+feh
-    # L = 4*pi*R^2*sigma*Teff^4
-    # R^2 = L / (4 pi sigma Teff^4)
-    # log R^2 = log L - log (4*pi*sigma) - 4 logte
-    # logg = log G + log M - log L + log(4*pi*sigma) + 4 log te
-    sigma=const.sigma_sb.cgs.value
-    G=const.G.cgs.value
-    lsun=const.L_sun.cgs.value
-    msun=const.M_sun.cgs.value
-    m=mass*msun
     logl=4*np.log10(teff)-logg-np.log10(lsun)+np.log10(4*np.pi*sigma*G)+np.log10(m)
 
     a=vmacro_massarotti(teff,logl,feh)
-    ax[0,0].set_title('Massarotti vmacro')
-    axim=ax[0,0].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500,2500.,5.,-1.],aspect='auto',origin='upper')
+    #axim=ax[0,0].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500,2500.,5.,-1.],aspect='auto',origin='upper')
     #p.colorbar(axim)
 
     a=vmacro_shetrone(teff,logl,feh)
-    ax[0,1].set_title('Shetrone vmacro')
-    axim=ax[0,1].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500,2500.,5.,-1.],aspect='auto',origin='upper')
+    #axim=ax[1,0].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500,2500.,5.,-1.],aspect='auto',origin='upper')
     #p.colorbar(axim)
     
     a=vmacro_bergemann(teff,logg,feh)
-    ax[1,0].set_title('Bergemann vmacro')
-    axim=ax[1,0].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500.,2500.,5.,-1.],aspect='auto',origin='upper')
+    #axim=ax[0,1].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500.,2500.,5.,-1.],aspect='auto',origin='upper')
     #p.colorbar(axim)
 
     a=vmacro_bergemann_new(teff,logg,feh)
-    ax[1,1].set_title('Bergemann vmacro new')
-    axim=ax[1,1].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500.,2500.,5.,-1.],aspect='auto',origin='upper')
+    #axim=ax[1,1].imshow(np.fliplr(a),vmin=0,vmax=10,extent=[7500.,2500.,5.,-1.],aspect='auto',origin='upper')
     #p.colorbar(axim)
 
-
-    p.savefig('vmacro_'+str(mass)+'.jpg')
+    p.tight_layout()
+    p.savefig(out+'_'+str(mass)+'.jpg')
 
 def vmacro_massarotti(teff,logl,feh) :
     '''

@@ -118,6 +118,25 @@ def readspec(name) :
         data.append(spec)
     return np.array(data)
 
+def readmask(name) :
+    '''
+    Read a single FERRE mask file
+    '''
+    f=open(name)
+    data=[]
+    for line in f :
+        data.append(float(line))
+    return np.array(data)
+
+def writemask(name, mask) :
+    '''
+    Write a single FERRE ask file
+    '''
+    f=open(name,'w')
+    for m in mask:
+        f.write('{:8.3f}\n'.format(m))
+    f.close()
+
 def readferredata(name) :
     '''
     Read a single file with FERRE-format data, and return as 2D array [nspec,nwave]
@@ -186,7 +205,7 @@ def rdlibhead(name) :
     Read a full FERRE library header with multi-extensions
 
     Returns:
-       libstr, libstr : first header, then list of extension headers; headers returned as dictionaries
+       libstr0, libstr : first header, then list of extension headers; headers returned as dictionaries
     '''
     try:
         f=open(name,'r')
@@ -199,10 +218,31 @@ def rdlibhead(name) :
         libstr=[]
         for imulti in range(multi) :
             libstr.append(rdsinglehead(f))
+        return libstr0,libstr
     except:
-        pass
+        return libstr0
 
-    return libstr0,libstr
+def elemmask(libfile,wspec,spec,dw=0.1,thresh=0.,out=None) :
+    '''
+    writes FERRE binary (0/1) mask file for wavelengths from input libfile, where input spectrum > thresh within wavelength dw
+    '''
+    libhead0,libhead=rdlibhead(libfile)
+    mask = []
+    for chip in range(libhead0['MULTI']) :
+        wave=libhead[chip]['WAVE'][0]+np.arange(libhead[chip]['NPIX'])*libhead[chip]['WAVE'][1]
+        if libhead[chip]['LOGW'] == 1 : wave = 10.**wave
+        for w in wave :
+            j=np.where(abs(wspec-w) < dw)[0]
+            if len(j) > 0 :
+                if spec[j].max() > thresh :
+                    mask.append(0.)
+                else :
+                    mask.append(1.)
+    if out is not None :
+        writemask(out,mask)
+
+    return np.array(mask)
+            
 
 def plotspec(w,spec,n=0) :
     fig,ax=plots.multi(1,2)
