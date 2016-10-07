@@ -26,6 +26,12 @@ def dr13() :
     aspcap='l30e'
     results='l30e.2'
 
+def dr14() :
+    global apred, aspcap, results
+    apred='r7'
+    aspcap='l31c'
+    results='testl31c'
+
 def printerror() :
     print('cannot find file: do you have correct version? permission? wget authentication?')
 

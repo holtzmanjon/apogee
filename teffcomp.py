@@ -15,14 +15,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-def bindata(xdata,ydata,bins) :
+def bindata(xdata,ydata,bins,median=True) :
     """
     Given xdata, ydata, and bins in x, returns mean of ydata in each of the bins
     """
     mean=bins*0.
     for i in range(len(bins)-1) :
       j=np.where((xdata>bins[i]) & (xdata<bins[i+1]))[0]
-      mean[i]=ydata[j].mean() 
+      if median :
+          mean[i]=np.median(ydata[j])
+      else :
+          mean[i]=ydata[j].mean() 
     return mean
 
 def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False,out='teffcomp') :
@@ -57,17 +60,20 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
-    yr=[-600,300]
+    yr=[-2000,1000]
     zr=[3500,5500]
-    bins=np.arange(-2.5,0.75,0.25)
+    binsize=0.25
+    bins=np.arange(-2.5,0.75,binsize)
     # diff color-coded by gravity as f([M/H])
     ghb=stars.ghb(allstar['J']-allstar['K'],allstar['FPARAM'][:,3],dwarf=dwarf)
     if alpha :
         plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,6],zr=[-0.1,0.4],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt=r'[$\alpha$/M]')
     else :
         plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
-    mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins)
-    plots.plotp(ax,bins,mean,marker='o',size=40)
+    mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins,median=False)
+    plots.plotp(ax,bins+binsize/2.,mean,marker='o',size=40)
+    mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins,median=True)
+    plots.plotp(ax,bins+binsize/2.,mean,marker='o',size=40,color='b')
     ax.text(0.1,0.9,'EBV<{:6.2f}'.format(ebvmax),transform=ax.transAxes)
     # 1D quadratic fit as a function of metallicity
     x=np.linspace(-3,1,200)

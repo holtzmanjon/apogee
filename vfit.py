@@ -107,6 +107,12 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     fig.tight_layout()
     fig.savefig(out+'.jpg')
 
+    fig,ax=plots.multi(1,3,figsize=(6,10))
+    plots.plotc(ax[0],teff[gd],10.**vmicro[gd]-10.**fit1d(logg[gd]),logg[gd],xt='Teff',yt=r'$\Delta vmicro$',xr=[3500,6000],yr=[-1,1],zr=[0,5],zt='log g',colorbar=True)
+    plots.plotc(ax[1],mh[gd],10.**vmicro[gd]-10.**fit1d(logg[gd]),logg[gd],xt='[M/H]',yt=r'$\Delta vmicro$',xr=[-2.5,0.5],yr=[-1,1],zr=[0,5],zt='log g',colorbar=True)
+    plots.plotc(ax[2],meanfib[gd],10.**vmicro[gd]-10.**fit1d(logg[gd]),logg[gd],xt='mean fiber',yt=r'$\Delta vmicro$',xr=[0,300],yr=[-1,1],zr=[0,5],zt='log g',colorbar=True)
+    fig.tight_layout()
+    fig.savefig(out+'_res.jpg')
     #fig,ax=plots.multi(1,2)
     #xr=[
     #junk = fit.fit1d(logg[gd], vmicro[gd],degree=degree,plot=ax[0,0],plot2d=True,yr=[0,5],xr=[0,5],xt='Teff',yt='log g')

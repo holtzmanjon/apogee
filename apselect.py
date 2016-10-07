@@ -207,7 +207,7 @@ def clustdata() :
     return out.view(np.recarray)
 
 
-def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=False,plot=False,hard=None) :
+def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=False,firstpos=True,plot=False,hard=None) :
 
     clust=clustdata()
     ic = np.where( np.core.defchararray.strip(clust.name) == cluster)[0]
@@ -295,10 +295,12 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
     # remove non firstgen GC stars if requested
     if firstgen :
         gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
-        #bd=np.where(gcstars['pop'] != 1)[0]
-        #jc = [x for x in jc if data[x]['APOGEE_ID'] not in gcstars['id'][bd]]
-        gd=np.where(gcstars['pop'] == 1)[0]
-        jc = [x for x in jc if data[x]['APOGEE_ID'] in gcstars['id'][gd]]
+        if firstpos :
+            gd=np.where(gcstars['pop'] == 1)[0]
+            jc = [x for x in jc if data[x]['APOGEE_ID'] in gcstars['id'][gd]]
+        else :
+            bd=np.where(gcstars['pop'] != 1)[0]
+            jc = [x for x in jc if data[x]['APOGEE_ID'] not in gcstars['id'][bd]]
 
     if plot :
         plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='b',size=30)
