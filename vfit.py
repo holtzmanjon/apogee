@@ -119,7 +119,26 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     #y, x = np.mgrid[yr[1]:yr[0]:200j, xr[1]:xr[0]:200j]
  
     # 2D plots a f(teff, logg)
-    #fit2d = fit.fit2d(teff[gd], logg[gd], vmicro[gd],degree=degree,plot=ax[2,0],yr=[5,0],xr=[6000,3500],xt='TTeff',yt='log g')
+    fig,ax=plots.multi(1,2)
+    fit2d = fit.fit2d(logg[gd], mh[gd], vmicro[gd],degree=degree,plot=ax[0],yr=[-2.5,1],xr=[0,5],xt='logg',yt='[M/H]')
+    des=np.zeros([5,len(gd)])
+    des[0,:]=1.
+    des[1,:]=logg[gd]
+    des[2,:]=logg[gd]**2
+    des[3,:]=logg[gd]**3
+    des[4,:]=mh[gd]
+    soln,inv=fit.linear(vmicro[gd],des)
+    y, x = np.mgrid[-2.5:1.:200j, 0:5.:200j]
+    pdb.set_trace()
+    ax[1].imshow((soln[0]+soln[1]*x+soln[2]*x**2+soln[3]*x**3+soln[4]*y),
+                extent=[0,5,-2.5,1.],aspect='auto',vmin=-0.25,vmax=0.5, origin='lower')
+    plots.plotc(ax[1],logg[gd],mh[gd],vmicro[gd],xr=[0,5],yr=[-2.5,1],zr=[-0.25,0.5],
+                xt='log g',yt='[M/H]',zt='vmicro',colorbar=True,size=15,linewidth=1)
+        # create independent variable grid for model and display
+
+    pdb.set_trace()
+
+
     #summary plots
     #plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
 

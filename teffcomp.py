@@ -28,7 +28,7 @@ def bindata(xdata,ydata,bins,median=True) :
           mean[i]=ydata[j].mean() 
     return mean
 
-def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False,out='teffcomp') :
+def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False,out='teffcomp',yr=[-500,500]) :
     """
     Compares allstar ASPCPAP Teff with photometric Teff from GHB for sample of stars with GLAT>glatmin and SFD_EBV<ebvmax,
     does fits
@@ -60,7 +60,6 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
-    yr=[-2000,1000]
     zr=[3500,5500]
     binsize=0.25
     bins=np.arange(-2.5,0.75,binsize)

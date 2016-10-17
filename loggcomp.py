@@ -15,7 +15,7 @@ import numpy as np
 import os
 import astropy
 
-def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',raw=True,cal=True) :
+def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',raw=True,cal=True,out='loggcomp') :
     '''
     asteroseismic log g comparisons for input allStar structure
     '''
@@ -74,6 +74,8 @@ def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',ra
         #plots.plotc(ax[3,1],allstar['FPARAM'][i1[rc],1],allstar['PARAM'][i1[rc],1]-allstar['FPARAM'][i1[rc],1],
         #    allstar['FPARAM'][i1[rc],3],xr=[0,5],yr=[-1,1],xt='seismic log g',zr=[-2,0.5])
     fig.tight_layout()
+    if out is not None :
+        plt.savefig(out+'.jpg')
 
 
 def clusters(allstar,xr=[-2.75,0.5],yr=[-1.,1.],zr=[3500,5500],apokasc='APOKASC_cat_v3.6.0.fits',firstgen=False) :
