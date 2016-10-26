@@ -1,3 +1,4 @@
+from holtz.apogee import apload
 from holtz.apogee import apselect
 from holtz.tools import html
 from holtz.tools import match
@@ -9,12 +10,12 @@ import glob
 import numpy as np
 from astropy.io import fits
 
-def allField(files=['apo*/*/apField-*.fits','apo*/*/apFieldC-*.fits'],out='allField.fits') :
+def allField(files=['apo*/*/apField-*.fits','apo*/*/apFieldC-*.fits'],out='allField.fits',verbose=False) :
     '''
     Concatenate set of apField files
     '''
     # concatenate the structures
-    all=struct.concat(files,verbose=False)
+    all=struct.concat(files,verbose=verbose)
 
     # write out the file
     if out is not None:
@@ -79,38 +80,62 @@ def concat(files,hdu=1) :
         print len(all), len(a)
     return all
 
-def calsample(indata,file=None,plot=True,clusters=True,apokasc='APOKASC_cat_v3.6.0',cal1m=True,galcen=True,lowext=True) :
+def hrsample(indata,hrdata,maxbin=50) :
+    ''' 
+    selects stars covering HR diagram as best as possible from input sample
+    '''
+    i1,i2 = match.match(indata['APOGEE_ID'],hrdata['APOGEE_ID'])
+    gd=[]
+    for teff in np.arange(3500,6000,500) :
+        gdteff=apselect.select(hrdata[i2],badval=['STAR_BAD'],badtarg=['EMBEDDED','EXTENDED'],teff=[teff,teff+500],sn=[100,1000],raw=True)
+        for logg in np.arange(0,5,1) :
+            j=apselect.select(hrdata[i2[gdteff]],logg=[logg,logg+1],raw=True)
+            gdlogg=gdteff[j]
+            for mh in np.arange(-2.5,0.5,0.5) :
+                j=apselect.select(hrdata[i2[gdlogg]],mh=[mh,mh+0.5],raw=True)
+                j=gdlogg[j]
+                js=np.argsort(hrdata[i2[j]]['SNR'])[::-1]
+                x = j[js] if len(j) < maxbin else j[js[0:maxbin]]
+                gd.extend(x)
+    return i1[gd],i2[gd]
+
+def calsample(indata=None,file='clust.html',plot=True,clusters=True,apokasc='APOKASC_cat_v3.6.0',cal1m=True,galcen=True,lowext=True,dir='cal',hrdata=None) :
     '''
     selects a calibration subsample from an input apField structure, including several calibration sub-classes: 
         cluster, APOKASC stars, 1m calibration stars. Creates cluster web pages/plots if requested
     '''
 
+    if indata is None :
+        indata=allField(files=['apo25m/*/apField-*.fits','apo1m/calibration/apField-*.fits'],out=None,verbose=True)
+
     j=np.where(indata['COMMISS'] == 0)[0]
     data=indata[j]
     jc=[]
 
+    try: os.mkdir(dir)
+    except: pass
     if clusters :
         clusts=apselect.clustdata()
-        f=html.head(file=file)
-        f.write('<TABLE BORDER=2')
+        f=html.head(file=dir+'/'+file)
+        f.write('<TABLE BORDER=2>\n')
         clust=apselect.clustdata()
         for ic in range(len(clust.name)) :
-            j=apselect.clustmember(data,clust[ic].name,plot=plot,hard='test')
+            j=apselect.clustmember(data,clust[ic].name,plot=plot,hard=dir)
             print(clust[ic].name,len(j))
             jc.extend(j)
-            f.write('<TR><TD>'+clust[ic].name+'<TD>{:12.6f}<TD>{:12.6f}<TD>{:8.2f}<TD>{:8.2f}<TD>{:8.2f}'.format(
+            f.write('<TR><TD>'+clust[ic].name+'<TD>{:12.6f}<TD>{:12.6f}<TD>{:8.2f}<TD>{:8.2f}<TD>{:8.2f}\n'.format(
                     clust[ic].ra,clust[ic].dec,clust[ic].rad,clust[ic].rv,clust[ic].drv))
-            f.write('<TD><A HREF='+clust[ic].name+'_pos.jpg><IMG SRC='+clust[ic].name+'_pos.jpg width=300></A>')
-            f.write('<TD><A HREF='+clust[ic].name+'_pos.jpg><IMG SRC='+clust[ic].name+'_rv.jpg width=300></A>')
-            f.write('<TD><A HREF='+clust[ic].name+'_pos.jpg><IMG SRC='+clust[ic].name+'_cmd.jpg width=300></A>')
+            f.write('<TD><A HREF='+clust[ic].name+'_pos.jpg><IMG SRC='+clust[ic].name+'_pos.jpg width=300></A>\n')
+            f.write('<TD><A HREF='+clust[ic].name+'_pos.jpg><IMG SRC='+clust[ic].name+'_rv.jpg width=300></A>\n')
+            f.write('<TD><A HREF='+clust[ic].name+'_pos.jpg><IMG SRC='+clust[ic].name+'_cmd.jpg width=300></A>\n')
         html.tail(f)
         print('Number of cluster stars: ',len(jc))
         # remove existing output directories, create new ones
-        cleandir('cal/clust',50)
+        cleandir(dir+'/clust',50)
         # create symbolic links in output directories
         nsplit=len(jc)//50+1
         for i in range(len(jc)) :
-            symlink(data[jc[i]],'cal/clust',i//nsplit)
+            symlink(data[jc[i]],dir+'/clust',i//nsplit)
         jc=[]
     
     if apokasc is not None :
@@ -145,13 +170,26 @@ def calsample(indata,file=None,plot=True,clusters=True,apokasc='APOKASC_cat_v3.6
     #if lowext :
 
     # remove existing output directories, create new ones
-    cleandir('cal/cal',50)
+    cleandir(dir+'/cal',50)
     # create symbolic links in output directories
     nsplit=len(jc)//50+1
     for i in range(len(jc)) :
-        symlink(data[jc[i]],'cal/cal',i//nsplit)
+        symlink(data[jc[i]],dir+'/cal',i//nsplit)
+    jc=[]
 
-    return jc
+    if hrdata is not None:
+        i1, i2 = hrsample(data,hrdata)
+        print('Number of HR sample stars: ',len(i1))
+        jc.extend(i1)
+
+    # remove existing output directories, create new ones
+    cleandir(dir+'/hr',50)
+    # create symbolic links in output directories
+    nsplit=len(jc)//50+1
+    for i in range(len(jc)) :
+        symlink(data[jc[i]],dir+'/hr',i//nsplit)
+
+    return indata
 
 
 def cleandir(out,n) :
@@ -159,7 +197,9 @@ def cleandir(out,n) :
         try:
             shutil.rmtree('{:s}{:03d}'.format(out,i))
         except : pass
-        os.mkdir('{:s}{:03d}'.format(out,i))
+        try:
+            os.mkdir('{:s}{:03d}'.format(out,i))
+        except : pass
 
 def symlink(data,out,idir) :
     outfile='{:s}{:03d}/{:s}.{:04d}.fits'.format(
