@@ -6,7 +6,7 @@ from astropy.io import fits
 from holtz.gal import isochrones
 from holtz.tools import match
 from holtz.tools import plots
-from holtz.apogee import flag
+from holtz.apogee import bitmask
 import pdb
 import matplotlib.pyplot as plt
 import numpy as np

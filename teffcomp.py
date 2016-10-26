@@ -9,7 +9,7 @@ from holtz.gal import stars
 from holtz.tools import match
 from holtz.tools import plots
 from holtz.tools import fit
-from holtz.apogee import flag
+from holtz.apogee import bitmask
 import pdb
 import matplotlib.pyplot as plt
 import numpy as np
