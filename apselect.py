@@ -4,9 +4,12 @@ import copy
 from astropy.io import ascii
 import os
 from holtz.tools import plots
+from holtz.apogee import bitmask
 import matplotlib.pyplot as plt
 
-def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-100.,100.],sn=[0,1000], raw=False, glon=[0,360],glat=[-90,90],grid=None,field=None,giants=None, dwarfs=None,rgb=None, rc=None,inter=None, id=None, redid=None) :
+def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-100.,100.],sn=[0,1000], raw=False, 
+           glon=[0,360],glat=[-90,90],grid=None,field=None,giants=None, dwarfs=None,rgb=None, rc=None,inter=None, 
+           id=None, redid=None, badtarg=None, gdtarg=None) :
     '''  
     Return indices of requested subsamples from input allStar structure 
 
@@ -51,13 +54,37 @@ def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-
         glon=[0,360]
     if glat is None :
         glat=[-90,90]
- 
+
+    # filter for bad ASPCAPFLAG 
     if type(badval) is str :
         badval = [badval]
     badbits = 0
     if badval is not None : 
         for val in badval :
-            badbits = badbits and flag.aspcapflagval(val)
+            badbits = badbits or bitmask.aspcapflagval(val)
+    try :
+       bad = data['ASPCAPFLAG'] & badbits
+    except :
+       bad = np.zeros(len(data),dtype=np.int8)
+
+    # filter for bad TARGFLAG
+    targ = np.zeros(len(data),dtype=np.int8)
+    if badtarg is not None :
+        if type(badtarg) is str :
+            badtarg=[badtarg]
+        for val in badtarg :
+            j=np.where(np.core.defchararray.find(data['TARGFLAGS'],val) >= 0)[0]
+            targ[j]=1
+            print val, len(j)
+
+    # filter for good TARGFLAG if not None, supercedes (default is all bad unless specified)
+    if gdtarg is not None :
+        if type(gdtarg) is str :
+            gdtarg=[gdtarg]
+        targ = np.ones(len(data),dtype=np.int8)
+        for val in gdtarg :
+            j=np.where(np.core.defchararray.find(data['TARGFLAGS'],val) >= 0)[0]
+            targ[j]=0
    
     if raw :
         param='FPARAM'
@@ -93,16 +120,11 @@ def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-
                   (cn>-0.1-0.005*dt) & (cn<-0.075-0.0025*dt))
 
     try :
-       bad = data.ASPCAPFLAG & badbits
-    except :
-       bad = np.zeros(len(data),dtype=np.int8)
-
-    try :
        snr = data['SNR']
     except :
        snr = data['SNR_2']
 
-    gd = np.where((bad == 0)  &
+    gd = np.where((bad == 0)  & (targ == 0) &
          (startype) &
          (t > teff[0]) & (t < teff[1])  &
          (g > logg[0]) & (g < logg[1])  &
@@ -236,10 +258,10 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
         jc=[]
     if plot :
         jf=np.where((np.abs(ra-clust[ic].ra)*np.cos(clust[ic].dec*np.pi/180.) < 1.5) & 
-                (np.abs(data['dec']-clust[ic].dec) < 1.5))[0]
+                (np.abs(data['DEC']-clust[ic].dec) < 1.5))[0]
         fig,ax=plots.multi(1,1)
-        plots.plotp(ax,ra[jf],data['dec'][jf],color='k',size=20)
-        plots.plotp(ax,ra[jc],data['dec'][jc],color='g',size=20)
+        plots.plotp(ax,ra[jf],data['DEC'][jf],color='k',size=20,draw=False)
+        plots.plotp(ax,ra[jc],data['DEC'][jc],color='g',size=20,draw=False)
         if hard is not None :
             print(hard+'/'+clust[ic].name[0]+'_pos.jpg')
             fig.savefig(hard+'/'+clust[ic].name[0]+'_pos.jpg')
@@ -284,8 +306,8 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
     # Remove badstars
     if plot :
         ax.cla()
-        plots.plotp(ax,data['J'][jf]-data['K'][jf],data['K'][jf],color='k',size=20,xr=[-0.5,1.5],yr=[15,6],facecolors='none',linewidth=1)
-        plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='g',size=30,xr=[-0.5,1.5],yr=[15,6])
+        plots.plotp(ax,data['J'][jf]-data['K'][jf],data['K'][jf],color='k',size=20,xr=[-0.5,1.5],yr=[15,6],facecolors='none',linewidth=1,draw=False)
+        plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='g',size=30,xr=[-0.5,1.5],yr=[15,6],draw=False)
     badstars = open(os.environ['IDLWRAP_DIR']+'/data/badcal.dat')
     bad = []
     for line in badstars :
@@ -303,7 +325,7 @@ def clustmember(data,cluster,logg=[-1,3.8],te=[3800,5500],raw=False,firstgen=Fal
             jc = [x for x in jc if data[x]['APOGEE_ID'] not in gcstars['id'][bd]]
 
     if plot :
-        plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='b',size=30)
+        plots.plotp(ax,data['J'][jc]-data['K'][jc],data['K'][jc],color='b',size=30,draw=False)
         if hard is not None :
             fig.savefig(hard+'/'+clust[ic].name[0]+'_cmd.jpg')
         else :
