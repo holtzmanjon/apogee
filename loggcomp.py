@@ -8,12 +8,91 @@ from holtz.gal import stars
 from holtz.tools import match
 from holtz.tools import plots
 from holtz.tools import fit
-from holtz.apogee import flag
+from holtz.apogee import bitmask
 import pdb
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import astropy
+
+def rcrgb(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',raw=True,cal=True,out='loggcomp') :
+    '''
+    asteroseismic log g comparisons for input allStar structure
+    '''
+
+    # match ASPCAP with APOKASC, and get RC/RGB stars
+    apokasc=fits.open(os.environ['IDLWRAP_DIR']+'/data/'+apokasc)[1].data
+    i1,i2=match.match(allstar['APOGEE_ID'],apokasc['2MASS_ID'])
+    rgb=np.where(apokasc['CONS_EVSTATES'][i2] == 'RGB')[0]
+    rc=np.where(apokasc['CONS_EVSTATES'][i2] == 'RC')[0]
+    notrc=np.where(apokasc['CONS_EVSTATES'][i2] != 'RC')[0]
+
+    rc=i1[rc]
+    rgb=i1[rgb]
+    print('RC min log g: ',allstar['FPARAM'][rc,1].min())
+    print('RC max log g: ',allstar['FPARAM'][rc,1].max())
+    # limit log g range for RC
+    rclogg = np.where((allstar['FPARAM'][rc,1] > 2.38) & (allstar['FPARAM'][rc,1]<3.2))[0]
+
+    fig,ax=plots.multi(2,2)
+    dt=allstar['FPARAM'][:,0]-(4468+(allstar['FPARAM'][:,1]-2.5)/0.0018 - 382.5*allstar['FPARAM'][:,3])
+    plots.plotc(ax[0,0],dt[rc],allstar['FPARAM'][rc,1],allstar['FPARAM'][rc,3],marker='s',xr=[-500,500],yr=[4,0],size=20)
+    plots.plotc(ax[0,0],dt[rgb],allstar['FPARAM'][rgb,1],allstar['FPARAM'][rgb,3],marker='o',xr=[-500,500],yr=[4,0],size=20)
+    ax[1,0].hist(dt[rc],color='b',bins=np.arange(-500,500,10))
+    ax[1,0].hist(dt[rgb],color='r',bins=np.arange(-500,500,10))
+    print('nrc: ',len(rc),'nrgb: ',len(rgb),'ntot: ',len(rc)+len(rgb))
+    t0best=4380
+    slopebest=550
+    mhslopebest=350
+    dtbest=150
+    for delta in [10,5,3,2,1] :
+     print('delta: ',delta)
+     nbest=10000
+     for t0 in np.arange(t0best-delta*10,t0best+delta*10,delta) :
+      for slope in np.arange(slopebest-delta*10,slopebest+delta*10,delta) :
+       for mhslope in np.arange(mhslopebest-delta*10,mhslopebest+delta*10,delta) :
+        dt=allstar['FPARAM'][:,0]-(t0+(allstar['FPARAM'][:,1]-2.5)*slope - mhslope*allstar['FPARAM'][:,3])
+        for dtcrit in range(dtbest-delta*10,dtbest+delta*10,delta) :
+            rcbd = np.where((dt[rc[rclogg]] < dtcrit))[0]
+            rgbbd = np.where(dt[rgb] > dtcrit)[0]
+            nbd=len(rcbd)+len(rgbbd)
+            if nbd < nbest : 
+                mhslopebest=mhslope
+                slopebest=slope
+                tbest=t0
+                dtbest=dtcrit
+                nbest=nbd
+     print dtbest,tbest,slopebest,mhslopebest
+     print nbest
+    dt=allstar['FPARAM'][:,0]-(tbest+(allstar['FPARAM'][:,1]-2.5)*slopebest - mhslopebest*allstar['FPARAM'][:,3])
+    cn=allstar['FPARAM'][:,4]-allstar['FPARAM'][:,5]
+    plots.plotc(ax[0,1],dt[rc],allstar['FPARAM'][rc,1],cn[rc],marker='s',xr=[-500,500],yr=[4,0],size=20,zr=[-0.5,0.5])
+    plots.plotc(ax[0,1],dt[rgb],allstar['FPARAM'][rgb,1],cn[rgb],marker='o',xr=[-500,500],yr=[4,0],size=20,zr=[-0.5,0.5])
+
+    plots.plotc(ax[1,1],dt[rc],cn[rc],allstar['FPARAM'][rc,3],marker='s',xr=[-500,500],yr=[-0.5,0.5],zr=[-2,0.5],size=20)
+    plots.plotc(ax[1,1],dt[rgb],cn[rgb],allstar['FPARAM'][rgb,3],marker='o',xr=[-500,500],yr=[-0.5,0.5],zr=[-2,0.5],size=20)
+
+    cnslopebest=-0.2/100.
+    cnintbest=0.
+    nbest=10000
+    slopearray=np.arange(cnslopebest-10*0.01,cnslopebest+10*0.01,0.01)
+    intarray=np.arange(cnintbest-10*0.02,cnintbest+10*0.02,0.02)
+    for cnslope in slopearray :
+      for cnint in intarray :
+        rcbd = np.where((dt[rc[rclogg]] < dtcrit) & (cn[rc[rclogg]] < cnint+cnslope*dt[rc[rclogg]]))[0]
+        rgbbd = np.where((dt[rgb] > dtcrit) & (cn[rgb] > cnint+cnslope*dt[rgb]))[0]
+        nbd=len(rcbd)+len(rgbbd)
+        if nbd < nbest : 
+            cnslopebest=cnslope
+            cnintbest=cnint
+            nbest=nbd
+        print cnslope, cnint, nbd
+    pdb.set_trace()
+    ax[1,1].plot([-0.5,0.5],cnintbest+[-0.5,0.5]*cnslope)
+    plt.tight_layout()
+    print cnslopebest,cnintbest
+    print nbest
+    
 
 def apokasc(allstar,logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits',raw=True,cal=True,out='loggcomp') :
     '''
@@ -233,8 +312,8 @@ def kurucz_marcs(logg='LOGG_SYD_SCALING',apokasc='APOKASC_cat_v3.6.0.fits') :
 
     # match l30i with APOKASC
     i1,i2=match.match(l30i['APOGEE_ID'],apokasc['2MASS_ID'])
-    warn=np.where(l30i['ASPCAPFLAG'][i1] & flag.aspcapflagval('ATMOS_HOLE_WARN'))[0]
-    bad=np.where(l30i['ASPCAPFLAG'][i1] & flag.aspcapflagval('ATMOS_HOLE_BAD'))[0]
+    warn=np.where(l30i['ASPCAPFLAG'][i1] & bitmask.aspcapflagval('ATMOS_HOLE_WARN'))[0]
+    bad=np.where(l30i['ASPCAPFLAG'][i1] & bitmask.aspcapflagval('ATMOS_HOLE_BAD'))[0]
     rgb=np.where(apokasc['CONS_EVSTATES'][i2] == 'RGB')[0]
     rc=np.where(apokasc['CONS_EVSTATES'][i2] == 'RC')[0]
     #plt.plot(apokasc[logg][i2],l30i['FPARAM'][i1,1],'ro')
