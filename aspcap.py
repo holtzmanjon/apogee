@@ -91,6 +91,19 @@ def elemsens(els=None,plot=None,ylim=[0.1,-0.3],teff=4750,logg=2.,feh=-1.) :
     else :
         return wave, out
 
+def sensplot(ax=None,offset=0) :
+    if ax is None :
+        fig,ax=plots.multi(1,1)
+    els=['O','Mg','Si','S','Ca','Ti','Na','Al','K','Ca']
+    cols=['r','g','b','c','y','m','r','g','b','c']
+    ls=['-','-','-','-','-','-',':',':',':',':']
+    for i in range(len(els)) :
+        w,s=elemsens(els=els[i])
+        plots.plotl(ax,w,s+offset,label=els[i],color=cols[i],ls=ls[i])
+    plt.legend()
+    #elems=['C','CI','N','O','Na','Mg','Al','Si','P','S','K','Ca','Ti','TiII','V','Cr','Mn','Fe','Co','Ni','Cu','Ge','Ce','Rb','Y','Nd']
+    
+
 def data(str,loc=None) :       
     '''
     Add apogeeObject data to structure

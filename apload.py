@@ -34,6 +34,12 @@ def dr13() :
     aspcap='l30e'
     results='l30e.2'
 
+def dr14() :
+    global apred, aspcap, results
+    apred='r8'
+    aspcap='l31c'
+    results='l31c.1'
+
 def printerror() :
     print('cannot find file: do you have correct version? permission? wget authentication?')
 
@@ -321,6 +327,25 @@ def aspcapStar(*args, **kwargs) :
         try :
             file = allfile(
                'aspcapStar',location=args[0],obj=args[1],
+               apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
+            return _readhdu(file,**kwargs)
+        except :
+            printerror()
+
+def apField(*args, **kwargs) :
+    """
+    NAME: apload.apField
+    PURPOSE:  read apField file (downloading if necessary)
+    USAGE:  ret = apload.apField(location)
+    RETURNS: if hdu==None : ImageHDUs (all extensions)
+             if hdu=N : returns (data, header) for specified HDU
+    """
+    if len(args) != 1 :
+        print('Usage: apField(location)')
+    else :
+        try :
+            file = allfile(
+               'apField',location=args[0],
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
