@@ -5,6 +5,7 @@ from astropy.modeling import models, fitting
 import astropy.constants as const
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 import pdb
 import matplotlib as mpl
 import sys
@@ -127,30 +128,45 @@ def fit_vmicro(data,teffrange=[3550,5500],mhrange=[-2.5,1],loggrange=[-0.5,4.75]
     # 2D plots a f(teff, logg)
     fig,ax=plots.multi(1,4,figsize=(6,10))
     #fit2d = fit.fit2d(logg[gd], mh[gd], vmicro[gd],degree=degree,plot=ax[0],yr=[-2.5,1],xr=[0,5],xt='logg',yt='[M/H]',log=True)
-    des=func(logg[gd],mh[gd])
-    soln,inv=fit.linear(vmicro[gd],des)
-    y, x = np.mgrid[-2.5:1.:200j, 0:5.:200j]
-    ax[0].imshow(10.**func(x,y,soln=soln),
+    if func == vm1t :
+      des=func(teff[gd],mh[gd])
+      soln,inv=fit.linear(vmicro[gd],des)
+      y, x = np.mgrid[-2.5:1.:200j, 3500:8000.:200j]
+      ax[0].imshow(10.**func(x,y,soln=soln),
+                extent=[3500,8000,-2.5,1.],aspect='auto',vmin=0.,vmax=3., origin='lower')
+      plots.plotc(ax[0],teff[gd],mh[gd],10.**vmicro[gd],xr=[3500,8000],yr=[-2.5,1],zr=[0.,3.],
+                xt='Teff',yt='[M/H]',zt='vmicro',colorbar=True,size=15,linewidth=1)
+      cs=ax[0].contour(x,y,10**func(x,y,soln=soln),colors='k')
+      ax[0].clabel(cs)
+
+    else :
+      des=func(logg[gd],mh[gd])
+      soln,inv=fit.linear(vmicro[gd],des)
+      y, x = np.mgrid[-2.5:1.:200j, 0:5.:200j]
+      ax[0].imshow(10.**func(x,y,soln=soln),
                 extent=[0,5,-2.5,1.],aspect='auto',vmin=0.,vmax=3., origin='lower')
-    plots.plotc(ax[0],logg[gd],mh[gd],10.**vmicro[gd],xr=[0,5],yr=[-2.5,1],zr=[0.,3.],
+      plots.plotc(ax[0],logg[gd],mh[gd],10.**vmicro[gd],xr=[0,5],yr=[-2.5,1],zr=[0.,3.],
                 xt='log g',yt='[M/H]',zt='vmicro',colorbar=True,size=15,linewidth=1)
+      cs=ax[0].contour(x,y,10**func(x,y,soln=soln),colors='k')
+      ax[0].clabel(cs,color='k')
         # create independent variable grid for model and display
-    plots.plotc(ax[1],logg[gd],10.**vmicro[gd],mh[gd],xt='logg',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[-2.,0.5],zt='[M/H]',size=5)
-    plots.plotc(ax[1],logg,10.**vmicro,mh,xt='log g',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[-2.,0.5],zt='[M/H]',colorbar=True,size=1)
-    plots.plotc(ax[2],logg[gd],10.**vmicro[gd],teff[gd],xt='logg',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[3500,6000],zt='Teff',size=5)
-    plots.plotc(ax[2],logg,10.**vmicro,teff,xt='log g',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[3500,6000],zt='Teff',colorbar=True,size=1)
-    plots.plotc(ax[3],logg[gd],10.**vmicro[gd]-10.**func(logg[gd],mh[gd],soln=soln),mh[gd],xt='logg',yt=r'$\Delta vmicro$',xr=[0.,5.],yr=[-1,1],zr=[-2.,0.5],zt='Teff',size=5)
-    plots.plotc(ax[3],logg,10.**vmicro-10.**func(logg,mh,soln=soln),mh,xt='log g',yt=r'$\Delta vmicro$',xr=[0.,5.],yr=[-1,1],zr=[-2.,0.5],zt='[M/H]',colorbar=True,size=1)
+      plots.plotc(ax[1],logg[gd],10.**vmicro[gd],mh[gd],xt='logg',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[-2.,0.5],zt='[M/H]',size=5)
+      plots.plotc(ax[1],logg,10.**vmicro,mh,xt='log g',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[-2.,0.5],zt='[M/H]',colorbar=True,size=1)
+      plots.plotc(ax[2],logg[gd],10.**vmicro[gd],teff[gd],xt='logg',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[3500,6000],zt='Teff',size=5)
+      plots.plotc(ax[2],logg,10.**vmicro,teff,xt='log g',yt=r'$vmicro$',xr=[0.,5.],yr=[0,4],zr=[3500,6000],zt='Teff',colorbar=True,size=1)
+      plots.plotc(ax[3],logg[gd],10.**vmicro[gd]-10.**func(logg[gd],mh[gd],soln=soln),mh[gd],xt='logg',yt=r'$\Delta vmicro$',xr=[0.,5.],yr=[-1,1],zr=[-2.,0.5],zt='Teff',size=5)
+      plots.plotc(ax[3],logg,10.**vmicro-10.**func(logg,mh,soln=soln),mh,xt='log g',yt=r'$\Delta vmicro$',xr=[0.,5.],yr=[-1,1],zr=[-2.,0.5],zt='[M/H]',colorbar=True,size=1)
+
     fig.tight_layout()
     fig.savefig(out+'_res.jpg')
 
     #summary plots
     #plot(teff, logg, mh, meanfib, vmicro, vrange, fit1d, fit2d, vt='vmicro')
 
-#    print('{',end="")
-#    for i in range(degree+1) :
-#        print('{:10.6f}'.format(fit1d.parameters[i]),end="")
-#    print('}')
+    print('{',end="")
+    for i in range(len(soln)) :
+        print('{:10.6f}'.format(soln[i]),end="")
+    print('}')
 
 #    return fit1d
     return
@@ -193,6 +209,15 @@ def vm3(logg,mh,soln=None) :
     else :
         return des
 
+def vm1t(teff,mh,soln=None) :
+    des=np.zeros([2,len(teff.flatten())])
+    des[0,:]=1.
+    des[1,:]=teff.flatten()
+    if soln is not None:
+        return np.dot(soln,des).reshape(teff.shape)
+    else :
+        return des
+
 def fit_vmacro(data,teffrange=[3550,5500],mhrange=[-2.5,1.], loggrange=[-1,3.8], vrange=[1,15],degree=1,maxerr=0.1,apokasc='APOKASC_cat_v3.6.0.fits',nopersist=False, reject=0,out='vmacro') :
     """ 
     Fit macroturbulence relation  with 1D f(log g) and 2D f(Teff, logg) fits, plots
@@ -215,6 +240,7 @@ def fit_vmacro(data,teffrange=[3550,5500],mhrange=[-2.5,1.], loggrange=[-1,3.8],
     vmicro = data['FPARAM'][:,2]
     mh = data['FPARAM'][:,3]
     vmacro = data['FPARAM'][:,7]
+    verr = np.sqrt(data['FPARAM_COV'][:,7,7])
     try :
        meanfib = data['MEANFIB']
     except :
@@ -226,8 +252,7 @@ def fit_vmacro(data,teffrange=[3550,5500],mhrange=[-2.5,1.], loggrange=[-1,3.8],
     print('nopersist: ', nopersist)
     print('reject: ', reject)
     gd = np.where((mh>mhrange[0]) & (mh<mhrange[1]) & (logg > loggrange[0]) & (logg < loggrange[1]) & (10.**vmacro < vrange[1]) &
-                  (teff>teffrange[0]) & (teff<teffrange[1]) &
-                  (np.sqrt(data['FPARAM_COV'][:,7,7]) < maxerr) ) [0]
+                  (teff>teffrange[0]) & (teff<teffrange[1]) & (verr<maxerr) )[0]
     if nopersist :
         j = np.where ((data['STARFLAG'][gd] & bitmask.persist()) == 0)[0]
         gd=gd[j]
@@ -247,26 +272,35 @@ def fit_vmacro(data,teffrange=[3550,5500],mhrange=[-2.5,1.], loggrange=[-1,3.8],
     type[i1[rgb]]=1
     type[i1[rc]]=-1
 
-    fig,ax=plots.multi(2,2,figsize=(12,8))
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,0],xt='log g', yt='vmacro',ydata=mh[gd],colorbar=True,zt='[M/H]',reject=reject,log=True)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='log g', yt='vmacro',ydata=teff[gd],colorbar=True,zt='Teff',reject=reject,log=True)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,0],xt='log g', yt='vmacro',ydata=meanfib[gd],colorbar=True,zt='mean fib',reject=reject,log=True)
-    fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,1],xt='log g', yt='vmacro',ydata=type[gd],colorbar=True,zt='RGB/RC',reject=reject,log=True)
-    fig.tight_layout()
-    fig.savefig(out+'.jpg')
+    #fig,ax=plots.multi(2,2,figsize=(12,8))
+    #fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,0],xt='log g', yt='vmacro',ydata=mh[gd],colorbar=True,zt='[M/H]',reject=reject,log=True)
+    #fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='log g', yt='vmacro',ydata=teff[gd],colorbar=True,zt='Teff',reject=reject,log=True)
+    #fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,0],xt='log g', yt='vmacro',ydata=meanfib[gd],colorbar=True,zt='mean fib',reject=reject,log=True)
+    #fit1d = fit.fit1d(logg[gd], vmacro[gd],degree=degree,plot=ax[1,1],xt='log g', yt='vmacro',ydata=type[gd],colorbar=True,zt='RGB/RC',reject=reject,log=True)
+    #fig.tight_layout()
+    #fig.savefig(out+'.jpg')
 
     #fig,ax=plots.multi(1,2)
-    fig,ax=plots.multi(2,2,figsize=(12,8))
+    fig,ax=plots.multi(2,3,figsize=(12,8))
     print('2D logg, mh')
     fit2d = fit.fit2d(logg[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0,0],xt='log g', yt='[M/H]',zt='log(vmacro)',reject=reject,zr=[0,15],log=True)
+    plots.plotc(ax[0,1],teff[gd],10.**vmacro[gd]-10.**fit2d(logg[gd],mh[gd]),mh[gd],xt='Teff',yt=r'$\Delta vmacro$',zt='[M/H]',xr=[5500,3500],yr=[-10,20],colorbar=True,yerr=verr[gd]*vmacro[gd]*math.log(10))
     parprint([fit2d.parameters[0],0.,fit2d.parameters[1],fit2d.parameters[2]])
-    print('2D teff, logg')
+
+    #print('2D teff, logg')
     fit2d_b = fit.fit2d(teff[gd], logg[gd], vmacro[gd],degree=degree,plot=ax[1,0],xt='Teff', yt='log g',zt='log(vmacro)',reject=reject,xr=[6000,3000],yr=[5,-1],zr=[0,15],log=True)
+    plots.plotc(ax[1,1],teff[gd],10.**vmacro[gd]-10.**fit2d_b(teff[gd],logg[gd]),mh[gd],xt='Teff',yt=r'$\Delta vmacro$',zt='[M/H]',xr=[5500,3500],yr=[-10,20],colorbar=True,yerr=verr[gd]*vmacro[gd]*math.log(10))
     parprint([fit2d_b.parameters[0],fit2d_b.parameters[1],fit2d_b.parameters[2],0.])
-    print('2D teff, [M/H]')
-    fit2d_c = fit.fit2d(teff[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='Teff', yt='[M/H]',zt='log(vmacro)',reject=reject,zr=[0,15],log=True)
-    parprint([fit2d_c.parameters[0],fit2d_c.parameters[1],0.,fit2d_c.parameters[2]])
-    plots.plotc(ax[1,1],teff[gd],logg[gd],10.**vmacro[gd],xr=[6000,3000],yr=[5,-1],xt='Teff',yt='log g', zr=[0,15])
+    #print('2D teff, [M/H]')
+    #fit2d_c = fit.fit2d(teff[gd], mh[gd], vmacro[gd],degree=degree,plot=ax[0,1],xt='Teff', yt='[M/H]',zt='log(vmacro)',reject=reject,zr=[0,15],log=True)
+    #parprint([fit2d_c.parameters[0],fit2d_c.parameters[1],0.,fit2d_c.parameters[2]])
+
+    fit1d = fit.fit1d(mh[gd], vmacro[gd],degree=degree,plot=ax[2,0],xt='[M/H]', yt='vmacro',colorbar=True,reject=reject,log=True,ydata=logg[gd],yr=[0,5],zt='log g')
+    parprint([fit1d.parameters[0],0.,0.,fit1d.parameters[1]])
+    plots.plotc(ax[2,1],teff[gd],10.**vmacro[gd]-10.**fit1d(mh[gd]),mh[gd],xt='Teff',yt=r'$\Delta vmacro$',zt='[M/H]',xr=[5500,3500],yr=[-10,20],colorbar=True,yerr=verr[gd]*vmacro[gd]*math.log(10),zr=[-2,0.5])
+
+    #plots.plotc(ax[1,1],teff[gd],logg[gd],10.**vmacro[gd],xr=[6000,3000],yr=[5,-1],xt='Teff',yt='log g', zr=[0,15])
+
     # DR13 fit 
     #dr13fit=models.Polynomial2D(degree=1)
     #dr13fit.parameters=[0.741,-0.0998,-0.225]
@@ -275,7 +309,8 @@ def fit_vmacro(data,teffrange=[3550,5500],mhrange=[-2.5,1.], loggrange=[-1,3.8],
     fig.savefig(out+'_2d.jpg')
     #pdb.set_trace()
     #plot(teff, logg, mh, meanfib, vmacro, vrange, fit1d, fit2d, vt='vmacro')
-    return fit1d, fit2d
+    return
+    #return fit1d, fit2d
 
 def parprint(par) :
 

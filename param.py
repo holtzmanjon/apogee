@@ -113,7 +113,7 @@ def plot(a,sn=[0,1000]) :
               y = 10.**a['PARAM'][gd,2]
               yr=[0.,8]
               yt = 'vmicro'
-              z = a['PARAM'][gd,3]
+              z = a['FPARAM'][gd,3]
               zr = [-2.5,0.5]
               zt='[M/H]'
               xtit.append('vmicro')
@@ -134,12 +134,12 @@ def plot(a,sn=[0,1000]) :
           ax=fig.add_subplot(111)
           if len(x) > 0 :
                 if len(fgrid) > 0 :
-                    plots.plotc(ax,x[fgrid],y[fgrid],z[fgrid],xr=xr,yr=yr,zr=zr,colorbar=False,size=size,marker='s',yt=yt,xt=xt,zt=zt)
+                    plots.plotc(ax,x[fgrid],y[fgrid],z[fgrid],xr=xr,yr=yr,zr=zr,size=size,marker='s',yt=yt,xt=xt,zt=zt,colorbar=True)
                 if len(gkgrid) > 0 :
-                    plots.plotc(ax,x[gkgrid],y[gkgrid],z[gkgrid],xr=xr,yr=yr,zr=zr,size=size,marker='o',yt=yt,xt=xt,zt=zt)
+                    plots.plotc(ax,x[gkgrid],y[gkgrid],z[gkgrid],xr=xr,yr=yr,zr=zr,size=size,marker='o',yt=yt,xt=xt,zt=zt,colorbar=True)
                     #plots.plotc(ax,x[gkgrid],y[gkgrid],'g',xr=xr,yr=yr,size=8,marker='o',yt=yt,xt=xt,zt=zt)
                 if len(mgrid) > 0 :
-                    plots.plotc(ax,x[mgrid],y[mgrid],z[mgrid],xr=xr,yr=yr,zr=zr,size=size,marker='^',yt=yt,xt=xt,zt=zt)
+                    plots.plotc(ax,x[mgrid],y[mgrid],z[mgrid],xr=xr,yr=yr,zr=zr,size=size,marker='^',yt=yt,xt=xt,zt=zt,colorbar=True)
                     #plots.plotc(ax,x[mgrid],y[mgrid],'r',xr=xr,yr=yr,size=8,marker='^',yt=yt,xt=xt,zt=zt)
           if iplot == 0 or iplot ==1 :
               plots.plotl(ax,[7000.,7000.],[4.,0.])
@@ -248,15 +248,26 @@ def plot(a,sn=[0,1000]) :
     file = []
     xtit= []
     for iplot in range(10,15) :
-          x = a['FPARAM'][gd,1]
-          xr = [-1,5]
-          xt= 'log g'
-          y = a['PARAM'][gd,1]-a['FPARAM'][gd,1]
-          yr=[-1,1]
-          yt = 'delta log g'
-          z = a['PARAM'][gd,3]
-          zr = [-2.5,0.5]
-          zt='[M/H]'
+          if iplot < 13 :
+              x = a['FPARAM'][gd,1]
+              xr = [-1,5]
+              xt= 'log g'
+              y = a['PARAM'][gd,1]-a['FPARAM'][gd,1]
+              yr=[-1,1]
+              yt = 'delta log g'
+              z = a['PARAM'][gd,3]
+              zr = [-2.5,0.5]
+              zt='[M/H]'
+          else :
+              x = a['FPARAM'][:,0]
+              xr = [6500,2500]
+              xt= 'Teff (raw)'
+              y = a['FPARAM'][:,1]
+              yr=[5,-1]
+              yt = 'log g'
+              z = a['FPARAM'][:,3]
+              zr = [-2.5,0.75]
+              zt='[M/H]'
           xtit.append('calibrated ')
 
           fig=plt.figure(figsize=(10,8))
@@ -267,6 +278,15 @@ def plot(a,sn=[0,1000]) :
               plots.plotc(ax,x[rc],y[rc],z[rc],xr=xr,yr=yr,zr=zr,colorbar=False,size=8,marker='s',yt=yt,xt=xt,zt=zt)
           elif iplot == 12 :
               plots.plotc(ax,x[inter],y[inter],z[inter],xr=xr,yr=yr,zr=zr,colorbar=False,size=8,marker='s',yt=yt,xt=xt,zt=zt)
+          elif iplot == 13 :
+              fig,ax=plots.multi(3,1,wspace=0.001,figsize=(12,8))
+              gdhole=np.where(np.core.defchararray.find(a['ASPCAPFLAGS'],'ATMOS_HOLE') < 0) [0]
+              warnhole=np.where((np.core.defchararray.find(a['ASPCAPFLAGS'],'ATMOS_HOLE') >= 0) & (np.core.defchararray.find(a['ASPCAPFLAGS'],'ATMOS_HOLE_BAD') < 0)) [0]
+              bdhole=np.where(np.core.defchararray.find(a['ASPCAPFLAGS'],'ATMOS_HOLE_BAD') >= 0) [0]
+              plots.plotc(ax[0],x[gdhole],y[gdhole],z[gdhole],xr=xr,yr=yr,zr=zr,colorbar=False,size=8,marker='s',yt=yt,xt=xt,zt=zt)
+              plots.plotc(ax[1],x[warnhole],y[warnhole],z[warnhole],xr=xr,yr=yr,zr=zr,colorbar=False,size=8,marker='s',xt=xt,zt=zt)
+              plots.plotc(ax[2],x[bdhole],y[bdhole],z[bdhole],xr=xr,yr=yr,zr=zr,size=8,marker='s',xt=xt,zt=zt,colorbar=True)
+
           plt.savefig(fname+'{:1d}.jpg'.format(iplot))
           plt.close()
           file.append(name+'{:1d}.jpg'.format(iplot))
@@ -291,12 +311,12 @@ def alpha(a) :
     plots.plotc(ax[5],a['TEFF'][gd],a['TI_FE'][gd]-a['ALPHA_M'][gd],a['M_H'][gd],xr=[3000,6000],yr=[-0.5,0.5],zr=[-2,0.5],yt='[Ti/FE]-[alpha/M]',xt='Teff')
     
 
-def main() :
+def main(vers='l30e.2') :
     ''' 
     Make series of plots and web pages for each calibration "type" 
     '''    
 
-    a,e,etoh = read('allStar-l30e.2.fits')
+    a,e,etoh = read('allStar-'+vers+'.fits')
     #a,e,etoh = read('allStar-testcal.fits')
     plot(a)
 

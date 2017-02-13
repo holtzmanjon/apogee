@@ -10,6 +10,7 @@ from holtz.tools import match
 from holtz.tools import plots
 from holtz.tools import fit
 from holtz.apogee import bitmask
+from holtz.apogee import cal
 import pdb
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +29,7 @@ def bindata(xdata,ydata,bins,median=True) :
           mean[i]=ydata[j].mean() 
     return mean
 
-def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[-2.5,0.75],alpha=False,out='teffcomp',yr=[-500,500]) :
+def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[3750,5500],mhrange=[-2.5,0.75],alpha=False,out='teffcomp',yr=[-500,500],calib=False) :
     """
     Compares allstar ASPCPAP Teff with photometric Teff from GHB for sample of stars with GLAT>glatmin and SFD_EBV<ebvmax,
     does fits
@@ -44,11 +45,15 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
 
     # select data to use
     if dwarf :
-        gd=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[3.8,5.0],raw=True)
+        gd=apselect.select(allstar,badval=['STAR_BAD'],badtarg=['EMBEDDED','EXTENDED'],teff=trange,mh=mhrange,logg=[3.8,5.0],raw=True)
     else :
-        gd=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],raw=True)
+        gd=apselect.select(allstar,badval=['STAR_BAD'],badtarg=['EMBEDDED','EXTENDED'],teff=trange,mh=mhrange,logg=[0,3.8],raw=True)
     allstar=allstar[gd]
-    j=np.where((abs(allstar['GLAT'])>glatmin)&(allstar['SFD_EBV']<ebvmax))[0]
+    j=np.where((abs(allstar['GLAT'])>glatmin)&(allstar['SFD_EBV']>-0.01)&(allstar['SFD_EBV']<ebvmax)&(abs(allstar['J'])<90)&(abs(allstar['K'])<90))[0]
+    if calib : 
+        param='PARAM'
+    else :
+        param='FPARAM'
 
     # remove second gen GC stars
     gcstars = ascii.read(os.environ['IDLWRAP_DIR']+'/data/gc_szabolcs.dat')
@@ -60,67 +65,84 @@ def ghb(allstar,glatmin=30.,ebvmax=0.03,dwarf=False,trange=[4000,5000],mhrange=[
     # plot Teff difference against metallicity, color-code by temperature
     fig,ax=plots.multi(1,1,hspace=0.001,wspace=0.001)
     xr=[-3.0,1.0]
-    zr=[3500,5500]
+    zr=trange
     binsize=0.25
     bins=np.arange(-2.5,0.75,binsize)
     # diff color-coded by gravity as f([M/H])
-    ghb=stars.ghb(allstar['J']-allstar['K'],allstar['FPARAM'][:,3],dwarf=dwarf)
+    ghb,dtdjk=stars.ghb(allstar['J']-allstar['K'],allstar[param][:,3],dwarf=dwarf)
+    gd=np.where(abs(allstar[param][:,0]-ghb) < 500)[0]
+    ghb=ghb[gd]
+    dtdjk=dtdjk[gd]
+    allstar=allstar[gd]
+
     if alpha :
-        plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,6],zr=[-0.1,0.4],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt=r'[$\alpha$/M]')
+        plots.plotc(ax,allstar[param][:,3],allstar[param][:,0]-ghb,allstar[param][:,6],zr=[-0.1,0.4],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt=r'[$\alpha$/M]')
     else :
-        plots.plotc(ax,allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
-    mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins,median=False)
+        plots.plotc(ax,allstar[param][:,3],allstar[param][:,0]-ghb,allstar[param][:,0],zr=zr,xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='$T_{eff}$')
+    mean=bindata(allstar[param][:,3],allstar[param][:,0]-ghb,bins,median=False)
     plots.plotp(ax,bins+binsize/2.,mean,marker='o',size=40)
-    mean=bindata(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,bins,median=True)
+    mean=bindata(allstar[param][:,3],allstar[param][:,0]-ghb,bins,median=True)
     plots.plotp(ax,bins+binsize/2.,mean,marker='o',size=40,color='b')
     ax.text(0.1,0.9,'EBV<{:6.2f}'.format(ebvmax),transform=ax.transAxes)
+    tefit = fit.fit1d(bins+binsize/2.,mean,degree=2,reject=0)
     # 1D quadratic fit as a function of metallicity
+    allfit = fit.fit1d(allstar[param][:,3],allstar[param][:,0]-ghb,ydata=allstar[param][:,0],degree=2,reject=0)
+    ejk=np.clip(np.sqrt(allstar['J_ERR']**2+allstar['K_ERR']**2),0.,0.02)
+    errpar = cal.errfit(allstar[param][:,0],allstar['SNR'],allstar[param][:,3],allstar[param][:,0]-tefit(allstar[param][:,3])-ghb,title='Teff',out=out+'_phot',zr=[0,250],meanerr=abs(dtdjk)*ejk,verbose=True)
+    errpar = cal.errfit(allstar[param][:,0],allstar['SNR'],allstar[param][:,3],allstar[param][:,0]-tefit(allstar[param][:,3])-ghb,title='Teff',out=out,zr=[0,150])
+
+    rms = (allstar[param][:,0]-tefit(allstar[param][:,3])-ghb).std()
+    ax.text(0.98,0.9,'rms: {:6.1f}'.format(rms),transform=ax.transAxes,ha='right')
     x=np.linspace(-3,1,200)
-    pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],degree=2)
-    plots.plotl(ax,x,pfit(x))
-    plots._data_x = allstar['FPARAM'][:,3]
-    plots._data_y = allstar['FPARAM'][:,0]-ghb
+    plots.plotl(ax,x,tefit(x),color='k')
+    plots.plotl(ax,x,allfit(x),color='b')
+    plots._data_x = allstar[param][:,3]
+    plots._data_y = allstar[param][:,0]-ghb
     plots._data = allstar
     plots.event(fig)
 
     # separate fits for low/hi alpha/M if requested
     if alpha :
         gdlo=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],alpha=[-0.1,0.1],raw=True)
-        mean=bindata(allstar['FPARAM'][gdlo,3],allstar['FPARAM'][gdlo,0]-ghb[gdlo],bins)
+        mean=bindata(allstar[param][gdlo,3],allstar[param][gdlo,0]-ghb[gdlo],bins)
         plots.plotp(ax,bins,mean,marker='o',size=40,color='g')
-        pfit = fit.fit1d(allstar['FPARAM'][gdlo,3],allstar['FPARAM'][gdlo,0]-ghb[gdlo],ydata=allstar['FPARAM'][gdlo,0],degree=2)
-        plots.plotl(ax,x,pfit(x))
+        tmpfit = fit.fit1d(allstar[param][gdlo,3],allstar[param][gdlo,0]-ghb[gdlo],ydata=allstar[param][gdlo,0],degree=2)
+        plots.plotl(ax,x,tmpfit(x))
         print('low alpha: ', len(gdlo))
 
         gdhi=apselect.select(allstar,badval=['STAR_BAD'],teff=trange,mh=mhrange,logg=[0,3.8],alpha=[0.1,0.5],raw=True)
-        mean=bindata(allstar['FPARAM'][gdhi,3],allstar['FPARAM'][gdhi,0]-ghb[gdhi],bins)
+        mean=bindata(allstar[param][gdhi,3],allstar[param][gdhi,0]-ghb[gdhi],bins)
         plots.plotp(ax,bins,mean,marker='o',size=40,color='b')
-        pfit = fit.fit1d(allstar['FPARAM'][gdhi,3],allstar['FPARAM'][gdhi,0]-ghb[gdhi],ydata=allstar['FPARAM'][gdhi,0],degree=2)
-        plots.plotl(ax,x,pfit(x))
+        tmpfit = fit.fit1d(allstar[param][gdhi,3],allstar[param][gdhi,0]-ghb[gdhi],ydata=allstar[param][gdhi,0],degree=2)
+        plots.plotl(ax,x,tmpfit(x))
         print('hi alpha: ', len(gdhi))
 
+    fig.tight_layout()
     fig.savefig(out+'.jpg')
 
     # auxiliary plots with different color-codings
     try:
         meanfib=allstar['MEANFIB']
     except:
-        meanfib=allstar['FPARAM'][:,0]*0.
+        meanfib=allstar[param][:,0]*0.
     fig,ax=plots.multi(2,2,hspace=0.001,wspace=0.001)
-    plots.plotc(ax[0,0],allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,allstar['FPARAM'][:,1],zr=[0,5],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='log g')
-    plots.plotc(ax[0,1],allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,meanfib,zr=[0,300],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='mean fiber')
-    pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000],colorbar=True,zt='Teff')
-    pfit = fit.fit1d(allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5],colorbar=True,zt='[M/H]')
+    plots.plotc(ax[0,0],allstar[param][:,3],allstar[param][:,0]-ghb,allstar[param][:,1],zr=[0,5],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='log g')
+    plots.plotc(ax[0,1],allstar[param][:,3],allstar[param][:,0]-ghb,meanfib,zr=[0,300],xr=xr,yr=yr,xt='[M/H]',yt='ASPCAP-photometric Teff',colorbar=True,zt='mean fiber')
+    pfit = fit.fit1d(allstar[param][:,3],allstar[param][:,0]-ghb,ydata=allstar[param][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000],colorbar=True,zt='Teff')
+    pfit = fit.fit1d(allstar[param][:,0],allstar[param][:,0]-ghb,ydata=allstar[param][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=trange,yr=[-2.5,0.5],colorbar=True,zt='[M/H]')
     fig.tight_layout()
+    fig.savefig(out+'_b.jpg')
    
     # do some test 2D and 1D fits and plots 
     #fig,ax=plots.multi(2,2,hspace=0.5,wspace=0.001)
     #ax[0,1].xaxis.set_visible(False)
     #ax[0,1].yaxis.set_visible(False)
-    #pfit = fit.fit2d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,plot=ax[0,0],zr=[-500,200],xt='[M/H]',yt=['Teff'],zt='$\Delta Teff$')
-    #pfit = fit.fit1d(allstar['FPARAM'][:,3],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000])
-    #pfit = fit.fit1d(allstar['FPARAM'][:,0],allstar['FPARAM'][:,0]-ghb,ydata=allstar['FPARAM'][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5])
+    #pfit = fit.fit2d(allstar[param][:,3],allstar[param][:,0],allstar[param][:,0]-ghb,plot=ax[0,0],zr=[-500,200],xt='[M/H]',yt=['Teff'],zt='$\Delta Teff$')
+    #pfit = fit.fit1d(allstar[param][:,3],allstar[param][:,0]-ghb,ydata=allstar[param][:,0],plot=ax[1,0],zr=[-500,200],xt='[M/H]',yt='$\Delta Teff$',xr=[-2.7,0.9],yr=[3500,5000])
+    #pfit = fit.fit1d(allstar[param][:,0],allstar[param][:,0]-ghb,ydata=allstar[param][:,3],plot=ax[1,1],zr=[-500,200],xt='Teff',xr=[3900,5100],yr=[-2.5,0.5])
     plt.draw()
+    return {'caltemin': 3532., 'caltemax': 10000., 'temin' : trange[0], 'temax': trange[1], 'mhmin': mhrange[0], 'mhmax' : mhrange[1],
+            'par': tefit.parameters, 'rms' :rms}
 
 
 def irfm(allstar,trange=[4000,5000],mhrange=[-2.5,0.75],out='dteff') :

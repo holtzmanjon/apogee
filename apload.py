@@ -13,6 +13,14 @@ if os.getenv('APOGEE_REDUX') is None :
 print('\nusing defaults: apred = ', apred, 'apstar = ', apstar, 'aspcap = ', aspcap, 'results = ',results)
 print("you can change using, e.g. apload.apred='r6'\n")
 
+def dr10() :
+    global apred, aspcap, results
+    apred='r3'
+    apstar='s3'
+    aspcap='v304'
+    results='v304'
+    print(apred)
+
 def dr12() :
     global apred, aspcap, results
     apred='r5'
@@ -28,9 +36,9 @@ def dr13() :
 
 def dr14() :
     global apred, aspcap, results
-    apred='r7'
+    apred='r8'
     aspcap='l31c'
-    results='testl31c'
+    results='l31c.1'
 
 def printerror() :
     print('cannot find file: do you have correct version? permission? wget authentication?')
@@ -319,6 +327,25 @@ def aspcapStar(*args, **kwargs) :
         try :
             file = allfile(
                'aspcapStar',location=args[0],obj=args[1],
+               apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
+            return _readhdu(file,**kwargs)
+        except :
+            printerror()
+
+def apField(*args, **kwargs) :
+    """
+    NAME: apload.apField
+    PURPOSE:  read apField file (downloading if necessary)
+    USAGE:  ret = apload.apField(location)
+    RETURNS: if hdu==None : ImageHDUs (all extensions)
+             if hdu=N : returns (data, header) for specified HDU
+    """
+    if len(args) != 1 :
+        print('Usage: apField(location)')
+    else :
+        try :
+            file = allfile(
+               'apField',location=args[0],
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :

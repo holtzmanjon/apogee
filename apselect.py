@@ -7,7 +7,7 @@ from holtz.tools import plots
 from holtz.apogee import bitmask
 import matplotlib.pyplot as plt
 
-def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-100.,100.],sn=[0,1000], raw=False, 
+def select(data,badval=None,badstar=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-100.,100.],sn=[0,1000], raw=False, 
            glon=[0,360],glat=[-90,90],grid=None,field=None,giants=None, dwarfs=None,rgb=None, rc=None,inter=None, 
            id=None, redid=None, badtarg=None, gdtarg=None) :
     '''  
@@ -27,6 +27,7 @@ def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-
         glat  (float[2]) : min, max GLAT to accept (default [-90,90])
         grid  (char)     : ASPCAP_CLASS to accept, if specified (default None)
         field (char)     : FIELD to accept, if specified (default None)
+        locid (char)     : FIELD to accept, if specified (default None)
         giants (bool)    : ASPCAP giants if true, per line in HR diagram, else all (default = None)
         dwarfs (bool)    : ASPCAP dwarfs if true, per line in HR diagram, else all (default = None)
         rgb    (bool)    : ASPCAP RGB per Teff, [M/H], [C/N] criterion (default = None)
@@ -61,11 +62,23 @@ def select(data,badval=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-
     badbits = 0
     if badval is not None : 
         for val in badval :
-            badbits = badbits or bitmask.aspcapflagval(val)
+            badbits = badbits | bitmask.aspcapflagval(val)
     try :
        bad = data['ASPCAPFLAG'] & badbits
     except :
        bad = np.zeros(len(data),dtype=np.int8)
+
+    # filter for bad STARFLAG
+    if type(badstar) is str :
+        badstar = [badstar]
+    badbits = 0
+    if badstar is not None : 
+        for val in badstar :
+            badbits = badbits | bitmask.starflagval(val)
+    try :
+       bad = bad | (data['STARFLAG'] & badbits)
+    except :
+       pass
 
     # filter for bad TARGFLAG
     targ = np.zeros(len(data),dtype=np.int8)

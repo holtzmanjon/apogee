@@ -203,6 +203,8 @@ def gettargflags(survey='apogee') :
  
 
 # old name compatibilities
+def starflagval(flag) :
+    return val('STARFLAG',flag)
 def aspcapflagval(flag) :
     return val('ASPCAPFLAG',flag)
 def badaspcapflag() :
