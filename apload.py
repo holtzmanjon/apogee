@@ -8,9 +8,11 @@ apred = 'r6'
 apstar = 'stars'
 aspcap = 'l30e'
 results = 'l30e.2'
+instrument = 'apogee-n'
+
 if os.getenv('APOGEE_REDUX') is None :
     print('you must set environment variable APOGEE_REDUX!')
-print('\nusing defaults: apred = ', apred, 'apstar = ', apstar, 'aspcap = ', aspcap, 'results = ',results)
+print('\nusing defaults: apred = ', apred, 'apstar = ', apstar, 'aspcap = ', aspcap, 'results = ',results, 'instrument = ',instrument)
 print("you can change using, e.g. apload.apred='r6'\n")
 
 def dr10() :
@@ -38,7 +40,7 @@ def dr14() :
     global apred, aspcap, results
     apred='r8'
     aspcap='l31c'
-    results='l31c.1'
+    results='l31c.2'
 
 def printerror() :
     print('cannot find file: do you have correct version? permission? wget authentication?')
@@ -106,9 +108,30 @@ def apFlat(*args,**kwargs) :
     else :
         try :
             file = allfile(
-               'apFlat',num=args[0],mjd=cmjd(args[0]),chips=True,
+               'Flat',num=args[0],mjd=cmjd(args[0]),chips=True,
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
-            return _readchip(file,'apFlat',**kwargs)
+            return _readchip(file,'Flat',**kwargs)
+        except :
+            printerror()
+
+def apWave(*args,**kwargs) :
+    """
+    NAME: apload.apWave
+    PURPOSE:  read apWave file (downloading if necessary)
+    USAGE:  ret = apload.apWave(imagenumber[,hdu=N,tuple=True])
+    RETURNS: if hdu==None : dictionary of ImageHDUs (all extensions) 
+                            for chips 'a', 'b', 'c'
+             if hdu=N : returns dictionaries (data, header) for specified HDU
+             if tuple=True : returns tuples rather than dictionaries
+    """
+    if len(args) != 1 :
+        print('Usage: apWave(imagenumber)')
+    else :
+        try :
+            file = allfile(
+               'Wave',num=args[0],mjd=cmjd(args[0]),chips=True,
+               apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
+            return _readchip(file,'Wave',**kwargs)
         except :
             printerror()
 
@@ -127,9 +150,9 @@ def ap1D(*args,**kwargs) :
     else :
         try :
             file = allfile(
-               'ap1D',num=args[0],mjd=cmjd(args[0]),chips=True,
+               '1D',num=args[0],mjd=cmjd(args[0]),chips=True,
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
-            return _readchip(file,'ap1D',**kwargs)
+            return _readchip(file,'1D',**kwargs)
         except :
             printerror()
 
@@ -149,9 +172,9 @@ def ap2D(*args,**kwargs) :
     else :
         try :
             file = allfile(
-               'ap2D',num=args[0],mjd=cmjd(args[0]),chips=True,
+               '2D',num=args[0],mjd=cmjd(args[0]),chips=True,
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
-            return _readchip(file,'ap2D',**kwargs)
+            return _readchip(file,'2D',**kwargs)
         except :
             printerror()
 
@@ -170,9 +193,9 @@ def ap2Dmodel(*args,**kwargs) :
     else :
         try :
             file = allfile(
-               'ap2Dmodel',num=args[0],mjd=cmjd(args[0]),chips=True,
+               '2Dmodel',num=args[0],mjd=cmjd(args[0]),chips=True,
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
-            return _readchip(file,'ap2Dmodel',**kwargs)
+            return _readchip(file,'2Dmodel',**kwargs)
         except :
             printerror()
 
@@ -191,9 +214,9 @@ def apCframe(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apCframe',plate=args[0],mjd=args[1],num=args[2],chips=True,
+               'Cframe',plate=args[0],mjd=args[1],num=args[2],chips=True,
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
-            return _readchip(file,'apCframe',**kwargs)
+            return _readchip(file,'Cframe',**kwargs)
         except :
             printerror()
 
@@ -212,9 +235,9 @@ def apPlate(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apPlate',plate=args[0],mjd=args[1],chips=True,telescope='apo25m',
+               'Plate',plate=args[0],mjd=args[1],chips=True,telescope='apo25m',
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
-            return _readchip(file,'apPlate',**kwargs)
+            return _readchip(file,'Plate',**kwargs)
         except :
             printerror()
 
@@ -231,7 +254,7 @@ def apVisit(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apVisit',plate=args[0],mjd=args[1],fiber=args[2],
+               'Visit',plate=args[0],mjd=args[1],fiber=args[2],
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
@@ -250,7 +273,7 @@ def apVisit1m(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apVisit1m',plate=args[0],mjd=args[1],obj=args[2],telescope='apo1m',
+               'Visit1m',plate=args[0],mjd=args[1],obj=args[2],telescope='apo1m',
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
@@ -269,7 +292,7 @@ def apVisitSum(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apVisitSum',location=args[0],plate=args[1],mjd=args[2],
+               'VisitSum',location=args[0],plate=args[1],mjd=args[2],
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
@@ -288,7 +311,7 @@ def apStar(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apStar',location=args[0],obj=args[1],
+               'Star',location=args[0],obj=args[1],
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
@@ -307,7 +330,7 @@ def apStar1m(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apStar',location=args[0],obj=args[1],telescope='apo1m',
+               'Star',location=args[0],obj=args[1],telescope='apo1m',
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
@@ -345,7 +368,7 @@ def apField(*args, **kwargs) :
     else :
         try :
             file = allfile(
-               'apField',location=args[0],
+               'Field',location=args[0],
                apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
             return _readhdu(file,**kwargs)
         except :
@@ -379,8 +402,11 @@ def _readchip(file,root,hdu=None,tuple=None) :
     """ low level routine to read set of 3 chip files and return data as requested"""
     print('Reading from file: ', file)
     try:
+        print (file.replace(root,root+'-a'))
         a=fits.open(file.replace(root,root+'-a'))
+        print (file.replace(root,root+'-b'))
         b=fits.open(file.replace(root,root+'-b'))
+        print (file.replace(root,root+'-c'))
         c=fits.open(file.replace(root,root+'-c'))
     except:
         print("Can't open file: ", file)
@@ -424,7 +450,7 @@ def _readhdu(file,hdu=None,verbose=False) :
         hd.close()
         return data, header
 
-def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,location=None,obj=None,plate=None,mjd=None,num=None,telescope='apo25m',fiber=None,chips=False):
+def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,location=None,obj=None,plate=None,mjd=None,num=None,telescope='apo25m',fiber=None,chips=False) :
     '''
     Uses sdss_access to create filenames and download files if necessary
     '''
@@ -432,25 +458,41 @@ def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,locatio
     http_access=HttpAccess(verbose=True)
     http_access.remote()
 
+    if instrument == 'apogee-n' :
+        if root == 'R' :
+            prefix='ap'
+        else :
+            prefix='ap'
+    else :
+        prefix='as'
+        telescope='lco25m'
+
+    if 'all' in root or 'aspcap' in root or 'cannon' in root :
+        sdssroot = root 
+    else :
+        sdssroot = 'ap'+root
+
     if chips == False :
         # First make sure the file doesn't exist locally
-        filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
-                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
-        print filePath
+        filePath = sdss_path.full(sdssroot,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,prefix=prefix,instrument=instrument)
+        print('filePath',filePath)
         if os.path.exists(filePath) is False: 
-            downloadPath = sdss_path.url(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
-                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
-            http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
-                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
+            downloadPath = sdss_path.url(sdssroot,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,prefix=prefix,instrument=instrument)
+            http_access.get(sdssroot,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,prefix=prefix,instrument=instrument)
         return filePath
     else :
         for chip in ['a','b','c'] :
-            filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+            print chip,root,num,mjd,prefix
+            filePath = sdss_path.full(sdssroot,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
-                chip=chip)
+                chip=chip,prefix=prefix,instrument=instrument)
+            print('filePath: ', filePath)
             if os.path.exists(filePath) is False: 
-                http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
+                http_access.get(sdssroot,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                     location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
-                chip=chip)
+                    chip=chip,prefix=prefix,instrument=instrument)
         return filePath.replace('-c','')
 
