@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pdb
+import scipy.ndimage.filters
 from astropy.io import fits
 from astropy.io import ascii
 from holtz.tools import struct
@@ -58,31 +59,33 @@ def ferre(spec,libpar,te0=None,logg0=None,mh0=None) :
 
     out=ferre.readferre(name)
 
-def elemsens(els=None,plot=None,ylim=[0.1,-0.3],teff=4750,logg=2.,feh=-1.) :
+def elemsens(els=None,plot=None,ylim=[0.1,-0.3],teff=4750,logg=2.,feh=-1.,smooth=None) :
     '''
     Returns and optionally plots wavelength sensitivity to changes in elemental abundances for specified elements from MOOG mini-elem grid
     '''
     elem=fits.open(os.environ['APOGEE_REDUX']+'/speclib/moog/elemsens.fits')
-    if plot is not None :
-        axalt=plot.twinx()
     if els is None :
         els = elems()[0]
     elif type(els) == str :
         els = [els]
+    wave=[]
     out=[]
     for el in els :
         for i in range(1,25) :
             card='HDU{:02d}'.format(i)
             try :
-              if elem[0].header[card].strip() == el.strip() :
+              if elem[0].header[card].strip().upper() == el.strip().upper() :
                 it=int(round((teff-elem[i].header['CRVAL2'])/elem[i].header['CDELT2']))
                 ig=int(round((logg-elem[i].header['CRVAL3'])/elem[i].header['CDELT3']))
                 ife=int(round((feh-elem[i].header['CRVAL4'])/elem[i].header['CDELT4']))
                 diff=elem[i].data[ife,ig,it,:]
+                if smooth is not None:
+                    diff=scipy.ndimage.filters.gaussian_filter(diff,smooth)
                 wave=elem[i].header['CRVAL1']+np.arange(elem[i].header['NAXIS1'])*elem[i].header['CDELT1']
                 if plot is not None:
-                    axalt.plot(wave,diff)
-                    axalt.set_ylim(ylim[0],ylim[1])
+                    #plot.plot(wave,diff,color='g')
+                    plot.plot(wave,diff)
+                    plot.set_ylim(ylim[0],ylim[1])
                     plt.draw()
                 out.append(diff)
             except: pass
@@ -93,14 +96,23 @@ def elemsens(els=None,plot=None,ylim=[0.1,-0.3],teff=4750,logg=2.,feh=-1.) :
 
 def sensplot(ax=None,offset=0) :
     if ax is None :
-        fig,ax=plots.multi(1,1)
-    els=['O','Mg','Si','S','Ca','Ti','Na','Al','K','Ca']
+        fig,ax=plots.multi(1,2,hspace=0.001,sharex=True)
+    els=['O','Mg','Si','S','Ca','Ti','Na','Al','K','P']
     cols=['r','g','b','c','y','m','r','g','b','c']
     ls=['-','-','-','-','-','-',':',':',':',':']
     for i in range(len(els)) :
         w,s=elemsens(els=els[i])
-        plots.plotl(ax,w,s+offset,label=els[i],color=cols[i],ls=ls[i])
-    plt.legend()
+        plots.plotl(ax[0],w,s+offset,label=els[i],color=cols[i],ls=ls[i])
+    ax[0].legend(fontsize='small')
+
+    elems=['C','CI','N','O','Na','Mg','Al','Si','P','S','K','Ca','Ti','TiII','V','Cr','Mn','Fe','Co','Ni','Cu','Ge','Ce','Rb','Y','Nd']
+    els=['V','Cr','Mn','Co','Ni','Cu','Ge','Ce','Rb','Nd']
+    cols=['r','g','b','c','y','m','r','g','b','c']
+    ls=['-','-','-','-','-','-',':',':',':',':']
+    for i in range(len(els)) :
+        w,s=elemsens(els=els[i])
+        plots.plotl(ax[1],w,s+offset,label=els[i],color=cols[i],ls=ls[i])
+    ax[1].legend(fontsize='small')
     #elems=['C','CI','N','O','Na','Mg','Al','Si','P','S','K','Ca','Ti','TiII','V','Cr','Mn','Fe','Co','Ni','Cu','Ge','Ce','Rb','Y','Nd']
     
 
