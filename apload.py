@@ -135,6 +135,27 @@ def apWave(*args,**kwargs) :
         except :
             printerror()
 
+def apLSF(*args,**kwargs) :
+    """
+    NAME: apload.apLSF
+    PURPOSE:  read apLSF file (downloading if necessary)
+    USAGE:  ret = apload.apLSF(imagenumber[,hdu=N,tuple=True])
+    RETURNS: if hdu==None : dictionary of ImageHDUs (all extensions) 
+                            for chips 'a', 'b', 'c'
+             if hdu=N : returns dictionaries (data, header) for specified HDU
+             if tuple=True : returns tuples rather than dictionaries
+    """
+    if len(args) != 1 :
+        print('Usage: apLSF(imagenumber)')
+    else :
+        try :
+            file = allfile(
+               'LSF',num=args[0],mjd=cmjd(args[0]),chips=True,
+               apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
+            return _readchip(file,'LSF',**kwargs)
+        except :
+            printerror()
+
 def apPSF(*args,**kwargs) :
     """
     NAME: apload.apPSF
@@ -460,7 +481,7 @@ def _readchip(file,root,hdu=None,tuple=None) :
            return a,b,c 
         else :
            print('file: ', file,' read into dictionary with entries a, b, c')
-           return {'a' : a, 'b' : b, 'c' : c}
+           return {'a' : a, 'b' : b, 'c' : c, 'filename' : file}
     else :
         a[hdu].header.set('filename',file.replace(root,root+'-a').basename)
         b[hdu].header.set('filename',file.replace(root,root+'-b').basename)
