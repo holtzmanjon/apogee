@@ -8,7 +8,7 @@ from holtz.apogee import bitmask
 import matplotlib.pyplot as plt
 
 def select(data,badval=None,badstar=None,logg=[-1,10],teff=[0,10000],mh=[-100.,100.],alpha=[-100.,100.],sn=[0,1000], raw=False, 
-           glon=[0,360],glat=[-90,90],grid=None,field=None,giants=None, dwarfs=None,rgb=None, rc=None,inter=None, 
+           glon=[-1,360],glat=[-90,90],grid=None,field=None,giants=None, dwarfs=None,rgb=None, rc=None,inter=None, 
            id=None, redid=None, badtarg=None, gdtarg=None) :
     '''  
     Return indices of requested subsamples from input allStar structure 
