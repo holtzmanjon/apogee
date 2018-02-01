@@ -135,6 +135,48 @@ def apWave(*args,**kwargs) :
         except :
             printerror()
 
+def apPSF(*args,**kwargs) :
+    """
+    NAME: apload.apPSF
+    PURPOSE:  read apPSF file (downloading if necessary)
+    USAGE:  ret = apload.apPSF(imagenumber[,hdu=N,tuple=True])
+    RETURNS: if hdu==None : dictionary of ImageHDUs (all extensions) 
+                            for chips 'a', 'b', 'c'
+             if hdu=N : returns dictionaries (data, header) for specified HDU
+             if tuple=True : returns tuples rather than dictionaries
+    """
+    if len(args) != 1 :
+        print('Usage: apPSF(imagenumber)')
+    else :
+        try :
+            file = allfile(
+               'PSF',num=args[0],mjd=cmjd(args[0]),chips=True,
+               apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
+            return _readchip(file,'PSF',**kwargs)
+        except :
+            printerror()
+
+def apEPSF(*args,**kwargs) :
+    """
+    NAME: apload.apEPSF
+    PURPOSE:  read apEPSF file (downloading if necessary)
+    USAGE:  ret = apload.apEPSF(imagenumber[,hdu=N,tuple=True])
+    RETURNS: if hdu==None : dictionary of ImageHDUs (all extensions) 
+                            for chips 'a', 'b', 'c'
+             if hdu=N : returns dictionaries (data, header) for specified HDU
+             if tuple=True : returns tuples rather than dictionaries
+    """
+    if len(args) != 1 :
+        print('Usage: apEPSF(imagenumber)')
+    else :
+        try :
+            file = allfile(
+               'EPSF',num=args[0],mjd=cmjd(args[0]),chips=True,
+               apred=apred,apstar=apstar,aspcap=aspcap,results=results,dr='collab')
+            return _readchip(file,'EPSF',**kwargs)
+        except :
+            printerror()
+
 def ap1D(*args,**kwargs) :
     """
     NAME: apload.ap1D
