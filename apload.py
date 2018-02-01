@@ -496,8 +496,10 @@ def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,locatio
     '''
     Uses sdss_access to create filenames and download files if necessary
     '''
+    print('allfile...')
     sdss_path=path.Path()
     http_access=HttpAccess(verbose=True)
+    print('http_access.remote..')
     http_access.remote()
 
     if instrument == 'apogee-n' :

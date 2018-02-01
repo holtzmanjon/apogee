@@ -57,24 +57,26 @@ def select(data,badval=None,badstar=None,logg=[-1,10],teff=[0,10000],mh=[-100.,1
         glat=[-90,90]
 
     # filter for bad ASPCAPFLAG 
+    aspcapflag=bitmask.AspcapBitMask()
     if type(badval) is str :
         badval = [badval]
     badbits = 0
     if badval is not None : 
-        for val in badval :
-            badbits = badbits | bitmask.aspcapflagval(val)
+        for name in badval :
+            badbits = badbits | aspcapflag.getval(name)
     try :
        bad = data['ASPCAPFLAG'] & badbits
     except :
        bad = np.zeros(len(data),dtype=np.int8)
 
     # filter for bad STARFLAG
+    starflag=bitmask.StarBitMask()
     if type(badstar) is str :
         badstar = [badstar]
     badbits = 0
     if badstar is not None : 
-        for val in badstar :
-            badbits = badbits | bitmask.starflagval(val)
+        for name in badstar :
+            badbits = badbits | starflag.getval(name)
     try :
        bad = bad | (data['STARFLAG'] & badbits)
     except :
