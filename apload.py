@@ -38,7 +38,7 @@ def dr14() :
     global apred, aspcap, results
     apred='r8'
     aspcap='l31c'
-    results='l31c.1'
+    results='l31c.2'
 
 def printerror() :
     print('cannot find file: do you have correct version? permission? wget authentication?')
@@ -428,18 +428,21 @@ def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,locatio
     '''
     Uses sdss_access to create filenames and download files if necessary
     '''
+    print('allfile...')
     sdss_path=path.Path()
     http_access=HttpAccess(verbose=True)
+    print('http_access.remote..')
     http_access.remote()
-
+    print('done http_access.remote..')
     if chips == False :
         # First make sure the file doesn't exist locally
         filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
-        print filePath
+        print('filePath:', filePath)
         if os.path.exists(filePath) is False: 
             downloadPath = sdss_path.url(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
+            print('downloadPath:',downloadPath)
             http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber)
         return filePath
@@ -448,7 +451,7 @@ def allfile(root,dr=None,apred=None,apstar=None,aspcap=None,results=None,locatio
             filePath = sdss_path.full(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                 location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
                 chip=chip)
-            print filePath
+            print('filePath:',filePath)
             if os.path.exists(filePath) is False: 
                 http_access.get(root,apred=apred,apstar=apstar,aspcap=aspcap,results=results,
                     location=location,obj=obj,plate=plate,mjd=mjd,num=num,telescope=telescope,fiber=fiber,
